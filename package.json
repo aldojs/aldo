@@ -1,0 +1,33 @@
+{
+  "name": "aldo",
+  "version": "0.1.0",
+  "description": "Fast web framework for Node.js",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aldojs/aldo.git"
+  },
+  "keywords": [
+    "web",
+    "framework",
+    "http",
+    "fast"
+  ],
+  "author": "absolux",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aldojs/aldo/issues"
+  },
+  "homepage": "https://github.com/aldojs/aldo#readme",
+  "devDependencies": {
+    "typescript": "^2.7.1"
+  },
+  "dependencies": {
+    "@types/node": "^9.4.4",
+    "aldo-http": "^0.1.1",
+    "find-my-way": "^1.10.1"
+  }
+}
