@@ -3,7 +3,7 @@ import Route from './route'
 import * as assert from 'assert'
 import { Middleware } from './types'
 
-export default class Registerer {
+export default class Router {
   private _middlewares: Middleware[] = []
   private _routes: Route[] = []
   private _prefix: string = ''

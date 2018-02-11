@@ -1,13 +1,13 @@
 
 import { join } from 'path'
 import * as assert from 'assert'
-import { Context, Middleware, RouteHandler } from './types'
+import { Middleware, FinalHandler } from './types'
 
 export default class Route {
   private _handlers = new Map<string, Middleware[]>()
   private _prefix: string = ''
+  private _name: string = ''
   private _path: string
-  private _name: string
 
   constructor (path: string) {
     this._path = _normalize(path)
@@ -136,31 +136,27 @@ function _wrapFinalHandler (handlers: Middleware[]) {
 /**
  * Wrap the route handler
  * 
- * @param {RouteHandler} fn
+ * @param {FinalHandler} fn
  * @returns {Middleware}
  * @private
  */
-function _wrap (fn: RouteHandler): Middleware {
-  // return async (ctx, next) => {
-  //   try {
-  //     var body = await fn(ctx)
+function _wrap (fn: FinalHandler): Middleware {
+  return async (ctx, next) => {
+    try {
+      var result = await fn(ctx)
+      
+      if (result instanceof Error) {
+        next(result)
+        return
+      }
 
-  //     if (body && !ctx.response.body) {
-  //       ctx.response.body = body
-  //     }
-
-  //     next()
-  //   } catch (error) {
-  //     next(error)
-  //   }
-  // }
-  return (ctx, next) => {
-    new Promise((r) => r(fn(ctx))).then((body?: any) => {
-      if (body && !ctx.response.body) {
-        ctx.response.body = body
+      if (result && !ctx.response.body) {
+        ctx.response.body = result
       }
 
       next()
-    }).catch(next)
+    } catch (error) {
+      next(error)
+    }
   }
 }
