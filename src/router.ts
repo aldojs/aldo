@@ -8,9 +8,16 @@ export default class Router {
   private _routes: Route[] = []
   private _prefix: string = ''
 
+  /**
+   * Set the path prefix for all routes
+   * 
+   * @param {String} value
+   * @returns {Router}
+   */
   prefix (value: string) {
     this._prefix = value
 
+    // set the prefix for the registered routes
     for (let route of this._routes) {
       route.prefix(value)
     }
@@ -18,22 +25,41 @@ export default class Router {
     return this
   }
 
-  routes () {
+  /**
+   * Get all defined routes
+   * 
+   * @returns {Array<Route>}
+   */
+  routes (): Route[] {
     return this._routes
   }
 
+  /**
+   * Create and add a route into the list
+   * 
+   * @param {String} path
+   * @returns {Route}
+   */
   route (path: string): Route {
-    let instance = new Route(path).prefix(this._prefix)
+    let instance = new Route(path, this._prefix)
 
     this._routes.push(instance)
 
     return instance
   }
 
-  use (fn: Middleware) {
-    assert(typeof fn === 'function', 'Route middleware should be a function')
+  /**
+   * Use global middlewares
+   * 
+   * @param {Function...} fns
+   * @returns {Router}
+   */
+  use (...fns: Middleware[]) {
+    fns.forEach((fn) => {
+      this._middlewares.push(_ensureFunction(fn))
+    })
 
-    this._middlewares.push(fn)
+    return this
   }
 
   head (path: string, ...handlers: Middleware[]) {
@@ -71,4 +97,17 @@ export default class Router {
   any (methods: string[], path: string, ...handlers: Middleware[]) {
     return this.route(path).any(methods, ...this._middlewares.concat(handlers))
   }
+}
+
+/**
+ * Ensure the given argument is a function
+ * 
+ * @param {Any} arg
+ * @returns {Function}
+ * @private
+ */
+function _ensureFunction<T> (arg: T): T {
+  if (typeof arg === 'function') return arg
+
+  throw new TypeError(`Function expected but got ${typeof arg}`)
 }
