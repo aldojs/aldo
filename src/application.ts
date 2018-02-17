@@ -1,16 +1,21 @@
 
 import { Server } from 'http'
-import Engine from './engine'
 import { setImmediate } from 'timers'
 // import * as createDebugger from 'debug'
 import * as TreeRouter from 'find-my-way'
 import { Request, Response, createServer } from 'aldo-http'
 import { Route, Middleware, Context, FinalHandler, Router } from './types'
 
+/**
+ * A global facade to manage routes, error handlers
+ * 
+ * @class Application
+ */
 export default class Application {
   private _context: Context = { app: this } as any
   private _namedRoutes = new Map<string, Route>()
-  private _engine = new Engine(_respond)
+  private _finally: FinalHandler = _respond
+  private _catchers: Middleware[] = []
   private _posts: Middleware[] = []
   private _pres: Middleware[] = []
   private _tree = new TreeRouter()
@@ -22,8 +27,7 @@ export default class Application {
    * @returns {Application}
    */
   pre (fn: Middleware) {
-    _assertFunction(fn)
-    this._pres.push(fn)
+    this._pres.push(_ensureFunction(fn))
     return this
   }
 
@@ -34,8 +38,7 @@ export default class Application {
    * @returns {Application}
    */
   post (fn: Middleware) {
-    _assertFunction(fn)
-    this._posts.push(fn)
+    this._posts.push(_ensureFunction(fn))
     return this
   }
 
@@ -46,8 +49,7 @@ export default class Application {
    * @returns {Application}
    */
   catch (fn: Middleware) {
-    _assertFunction(fn)
-    this._engine.onError(fn)
+    this._catchers.push(_ensureFunction(fn))
     return this
   }
 
@@ -58,13 +60,12 @@ export default class Application {
    * @returns {Application}
    */
   finally (fn: FinalHandler) {
-    _assertFunction(fn, 'The final handler should be a function')
-    this._engine.onEnd(fn)
+    this._finally = _ensureFunction(fn)
     return this
   }
 
   /**
-   * Use router's routes into the tree
+   * Add router's routes into the tree
    * 
    * @param {Router} router
    * @returns {Application}
@@ -99,7 +100,7 @@ export default class Application {
     if (!found) {
       let err = _notFoundError(url)
 
-      this._engine.catch(err, ctx)
+      this._loopError(err, ctx)
       return
     }
 
@@ -114,13 +115,14 @@ export default class Application {
    * Create a HTTP server and pass the arguments to `listen` method
    * 
    * @param {Any...} args
+   * @returns {Server}
    */
   serve (...args: any[]): Server {
     return createServer(this.dispatch.bind(this)).listen(...args)
   }
 
   /**
-   * Extend the context by adding more properties
+   * Extend the app context by adding more properties
    * 
    * @param {String} prop
    * @param {Any} value
@@ -162,7 +164,7 @@ export default class Application {
   }
 
   /**
-   * Check if the prop is defined in the context
+   * Check if the prop is defined in the app context
    * 
    * @param {String} prop
    * @returns {Boolean}
@@ -198,7 +200,51 @@ export default class Application {
   private _compose (fns: Middleware[]): FinalHandler {
     var handlers = [...this._pres, ...fns, ...this._posts]
 
-    return (ctx: Context) => this._engine.try(ctx, handlers)
+    return (ctx: Context) => this._loopMiddleware(ctx, handlers)
+  }
+
+  /**
+   * 
+   * 
+   * @param {Object} ctx
+   * @param {Array<Function>} fns
+   */
+  private _loopMiddleware (ctx: Context, fns: Middleware[]) {
+    var i = 0
+
+    var next = (err?: any) => {
+      if (!ctx.error && err) {
+        this._loopError(err, ctx)
+        return
+      }
+
+      var fn = fns[i++]
+
+      if (!fn) {
+        next = _noop
+        fn = this._finally
+      }
+
+      // async call
+      setImmediate(fn, ctx, next)
+    }
+
+    next()
+  }
+
+  /**
+   * 
+   * 
+   * @param {Error} err
+   * @param {Object} ctx
+   */
+  private _loopError (err: any, ctx: Context) {
+    // TODO ensure err is an Error instance
+
+    // set the context error
+    ctx.error = err
+
+    this._loopMiddleware(ctx, this._catchers)
   }
 }
 
@@ -221,17 +267,16 @@ function _notFoundError (path: string) {
 }
 
 /**
- * Ensure the given argument is a middleware function
+ * Ensure the given argument is a function
  * 
  * @param {Any} arg
- * @param {String} [msg]
  * @returns {Function}
  * @private
  */
-function _assertFunction (arg: any, msg?: string) {
+function _ensureFunction<T> (arg: T): T {
   if (typeof arg === 'function') return arg
 
-  throw new Error(msg || 'The middleware should be a function')
+  throw new TypeError(`Function expected but ${typeof arg} given.`)
 }
 
 /**
@@ -241,4 +286,13 @@ function _assertFunction (arg: any, msg?: string) {
  */
 function _respond ({ response }: Context) {
   response.send()
+}
+
+/**
+ * Noop
+ * 
+ * @private
+ */
+function _noop () {
+  // do nothing
 }
