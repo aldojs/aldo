@@ -62,7 +62,7 @@ describe('Test Route', () => {
     it('should add handlers for POST method', () => {
       var route = new Route('/')
 
-      route.head(() => {}, () => {})
+      route.post(() => {}, () => {})
 
       var [method, handlers] = route.handlers()[0]
 
@@ -77,7 +77,7 @@ describe('Test Route', () => {
     it('should add handlers for PUT method', () => {
       var route = new Route('/')
 
-      route.head(() => {}, () => {})
+      route.put(() => {}, () => {})
 
       var [method, handlers] = route.handlers()[0]
 
@@ -92,7 +92,7 @@ describe('Test Route', () => {
     it('should add handlers for PATCH method', () => {
       var route = new Route('/')
 
-      route.head(() => {}, () => {})
+      route.patch(() => {}, () => {})
 
       var [method, handlers] = route.handlers()[0]
 
@@ -107,7 +107,7 @@ describe('Test Route', () => {
     it('should add handlers for OPTIONS method', () => {
       var route = new Route('/')
 
-      route.head(() => {}, () => {})
+      route.options(() => {}, () => {})
 
       var [method, handlers] = route.handlers()[0]
 
@@ -122,7 +122,7 @@ describe('Test Route', () => {
     it('should add handlers for DELETE method', () => {
       var route = new Route('/')
 
-      route.head(() => {}, () => {})
+      route.delete(() => {}, () => {})
 
       var [method, handlers] = route.handlers()[0]
 
@@ -199,7 +199,7 @@ describe('Test Route', () => {
 
       var [method, handlers] = route.handlers()[0]
 
-      assert.equal(method, 'HEAD')
+      assert.equal(method, 'PUT')
       assert.equal(handlers.length, 2)
       assert.equal(handlers[0], handler1)
       assert.notEqual(handlers[1], handler2)
