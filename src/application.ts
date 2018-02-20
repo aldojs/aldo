@@ -26,7 +26,7 @@ export default class Application {
    * @param {Function} fn
    * @returns {Application}
    */
-  pre (fn: Middleware) {
+  public pre (fn: Middleware) {
     this._pres.push(_ensureFunction(fn))
     return this
   }
@@ -37,7 +37,7 @@ export default class Application {
    * @param {Function} fn
    * @returns {Application}
    */
-  post (fn: Middleware) {
+  public post (fn: Middleware) {
     this._posts.push(_ensureFunction(fn))
     return this
   }
@@ -48,7 +48,7 @@ export default class Application {
    * @param {Function} fn
    * @returns {Application}
    */
-  catch (fn: Middleware) {
+  public catch (fn: Middleware) {
     this._catchers.push(_ensureFunction(fn))
     return this
   }
@@ -59,7 +59,7 @@ export default class Application {
    * @param {Function} fn
    * @returns {Application}
    */
-  finally (fn: FinalHandler) {
+  public finally (fn: FinalHandler) {
     this._finally = _ensureFunction(fn)
     return this
   }
@@ -70,7 +70,7 @@ export default class Application {
    * @param {Router} router
    * @returns {Application}
    */
-  use (router: Router) {
+  public use (router: Router) {
     for (let route of router.routes()) {
       for (let [method, fns] of route.handlers()) {
         this._tree.on(method, route.path, this._compose(fns))
@@ -89,7 +89,7 @@ export default class Application {
    * @param {Request} request
    * @param {Response} response
    */
-  dispatch (request: Request, response: Response): void {
+  public dispatch (request: Request, response: Response): void {
     var { method, url } = request
     var found = this._tree.find(method, url)
     var ctx = this._makeContext(request, response)
@@ -117,7 +117,7 @@ export default class Application {
    * @param {Any...} args
    * @returns {Server}
    */
-  serve (...args: any[]): Server {
+  public serve (...args: any[]): Server {
     return createServer(this.dispatch.bind(this)).listen(...args)
   }
 
@@ -128,7 +128,7 @@ export default class Application {
    * @param {Any} value
    * @returns {Application}
    */
-  set (prop: string, value: any) {
+  public set (prop: string, value: any) {
     var descriptor: PropertyDescriptor = {
       configurable: true,
       enumerable: true
@@ -159,7 +159,7 @@ export default class Application {
    * @param {String} prop
    * @returns {Any}
    */
-  get (prop: string) {
+  public get (prop: string) {
     return this._context[prop]
   }
 
@@ -169,15 +169,15 @@ export default class Application {
    * @param {String} prop
    * @returns {Boolean}
    */
-  has (prop: string) {
+  public has (prop: string) {
     return prop in this._context
   }
 
   /**
    * Create a new copy of the context object
    * 
-   * @param {Object} request
-   * @param {Object} response
+   * @param {Request} request
+   * @param {Response} response
    * @returns {Object}
    * @private
    */
@@ -191,7 +191,7 @@ export default class Application {
   }
 
   /**
-   * 
+   * Compose the middleware list into a callable function
    * 
    * @param {Array<Function>} fns
    * @returns {Function}
@@ -204,7 +204,7 @@ export default class Application {
   }
 
   /**
-   * 
+   * Loop over the route middlewares
    * 
    * @param {Object} ctx
    * @param {Array<Function>} fns
@@ -233,7 +233,7 @@ export default class Application {
   }
 
   /**
-   * 
+   * Loop over the error middlewares
    * 
    * @param {Error} err
    * @param {Object} ctx
@@ -282,6 +282,7 @@ function _ensureFunction<T> (arg: T): T {
 /**
  * Send the response
  * 
+ * @param {Object} context
  * @private
  */
 function _respond ({ response }: Context) {

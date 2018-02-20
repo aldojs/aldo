@@ -3,10 +3,18 @@ import Route from './route'
 import * as assert from 'assert'
 import { Middleware } from './types'
 
+/**
+ * Routes factory and manager
+ * 
+ * @class Router
+ */
 export default class Router {
   private _middlewares: Middleware[] = []
   private _routes: Route[] = []
-  private _prefix: string = ''
+
+  public constructor (private _prefix: string = '') {
+    // 
+  }
 
   /**
    * Set the path prefix for all routes
@@ -14,7 +22,7 @@ export default class Router {
    * @param {String} value
    * @returns {Router}
    */
-  prefix (value: string) {
+  public prefix (value: string) {
     this._prefix = value
 
     // set the prefix for the registered routes
@@ -30,7 +38,7 @@ export default class Router {
    * 
    * @returns {Array<Route>}
    */
-  routes (): Route[] {
+  public routes (): Route[] {
     return this._routes
   }
 
@@ -40,7 +48,7 @@ export default class Router {
    * @param {String} path
    * @returns {Route}
    */
-  route (path: string): Route {
+  public route (path: string): Route {
     let instance = new Route(path, this._prefix)
 
     this._routes.push(instance)
@@ -54,7 +62,7 @@ export default class Router {
    * @param {Function...} fns
    * @returns {Router}
    */
-  use (...fns: Middleware[]) {
+  public use (...fns: Middleware[]) {
     fns.forEach((fn) => {
       this._middlewares.push(_ensureFunction(fn))
     })
@@ -62,39 +70,39 @@ export default class Router {
     return this
   }
 
-  head (path: string, ...handlers: Middleware[]) {
+  public head (path: string, ...handlers: Middleware[]) {
     return this.route(path).head(...this._middlewares.concat(handlers))
   }
 
-  get (path: string, ...handlers: Middleware[]) {
+  public get (path: string, ...handlers: Middleware[]) {
     return this.route(path).get(...this._middlewares.concat(handlers))
   }
 
-  post (path: string, ...handlers: Middleware[]) {
+  public post (path: string, ...handlers: Middleware[]) {
     return this.route(path).post(...this._middlewares.concat(handlers))
   }
 
-  put (path: string, ...handlers: Middleware[]) {
+  public put (path: string, ...handlers: Middleware[]) {
     return this.route(path).put(...this._middlewares.concat(handlers))
   }
 
-  patch (path: string, ...handlers: Middleware[]) {
+  public patch (path: string, ...handlers: Middleware[]) {
     return this.route(path).patch(...this._middlewares.concat(handlers))
   }
 
-  delete (path: string, ...handlers: Middleware[]) {
+  public delete (path: string, ...handlers: Middleware[]) {
     return this.route(path).delete(...this._middlewares.concat(handlers))
   }
 
-  options (path: string, ...handlers: Middleware[]) {
+  public options (path: string, ...handlers: Middleware[]) {
     return this.route(path).options(...this._middlewares.concat(handlers))
   }
 
-  all (path: string, ...handlers: Middleware[]) {
+  public all (path: string, ...handlers: Middleware[]) {
     return this.route(path).all(...this._middlewares.concat(handlers))
   }
 
-  any (methods: string[], path: string, ...handlers: Middleware[]) {
+  public any (methods: string[], path: string, ...handlers: Middleware[]) {
     return this.route(path).any(methods, ...this._middlewares.concat(handlers))
   }
 }

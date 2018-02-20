@@ -6,7 +6,7 @@ import { Middleware, FinalHandler } from './types'
 const METHODS = ['HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 
 /**
- * 
+ * Route container
  * 
  * @class Route
  */
@@ -23,7 +23,7 @@ export default class Route {
    * @param {String} [prefix]
    * @constructor
    */
-  constructor (path: string, prefix: string = '') {
+  public constructor (path: string, prefix: string = '') {
     this._prefix = _normalize(prefix)
     this._path = _normalize(path)
     this._name = ''
@@ -34,7 +34,7 @@ export default class Route {
    * 
    * @type {String}
    */
-  get path (): string {
+  public get path (): string {
     return join(this._prefix, this._path)
   }
 
@@ -43,7 +43,7 @@ export default class Route {
    * 
    * @type {String}
    */
-  get name (): string {
+  public get name (): string {
     return this._name
   }
 
@@ -53,7 +53,7 @@ export default class Route {
    * @param {String} name
    * @returns {Route}
    */
-  as (name: string) {
+  public as (name: string) {
     this._name = name
     return this
   }
@@ -66,7 +66,7 @@ export default class Route {
    * 
    * @todo add test case for "/" path
    */
-  prefix (path: string) {
+  public prefix (path: string) {
     this._prefix = _normalize(path)
     return this
   }
@@ -76,7 +76,7 @@ export default class Route {
    * 
    * @returns {Array<[String, Array<Function>]>}
    */
-  handlers (): [string, Middleware[]][] {
+  public handlers (): [string, Middleware[]][] {
     return Array.from(this._handlers)
   }
 
@@ -86,7 +86,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  head (...fns: Middleware[]) {
+  public head (...fns: Middleware[]) {
     return this.any(['HEAD'], ...fns)
   }
 
@@ -96,7 +96,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  get (...fns: Middleware[]) {
+  public get (...fns: Middleware[]) {
     return this.any(['HEAD', 'GET'], ...fns)
   }
 
@@ -106,7 +106,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  post (...fns: Middleware[]) {
+  public post (...fns: Middleware[]) {
     return this.any(['POST'], ...fns)
   }
 
@@ -116,7 +116,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  put (...fns: Middleware[]) {
+  public put (...fns: Middleware[]) {
     return this.any(['PUT'], ...fns)
   }
 
@@ -126,7 +126,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  patch (...fns: Middleware[]) {
+  public patch (...fns: Middleware[]) {
     return this.any(['PATCH'], ...fns)
   }
 
@@ -136,7 +136,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  delete (...fns: Middleware[]) {
+  public delete (...fns: Middleware[]) {
     return this.any(['DELETE'], ...fns)
   }
 
@@ -146,7 +146,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  options (...fns: Middleware[]) {
+  public options (...fns: Middleware[]) {
     return this.any(['OPTIONS'], ...fns)
   }
 
@@ -158,7 +158,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  all (...fns: Middleware[]) {
+  public all (...fns: Middleware[]) {
     return this.any(METHODS, ...fns)
   }
 
@@ -171,7 +171,7 @@ export default class Route {
    * @param {Function...} fns
    * @returns {Route}
    */
-  any (methods: string[], ...fns: Middleware[]) {
+  public any (methods: string[], ...fns: Middleware[]) {
     assert(fns.length, 'At least one route handler is required.')
 
     fns.forEach((fn) => {
