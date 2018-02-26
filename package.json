@@ -1,6 +1,6 @@
 {
   "name": "aldo",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "Fast web framework for Node.js",
   "main": "lib/index.js",
   "scripts": {
