@@ -13,7 +13,7 @@ import { Route, Middleware, Context, FinalHandler, Router } from './types'
  */
 export default class Application {
   private _context: Context = { app: this } as any
-  private _namedRoutes = new Map<string, Route>()
+  // private _namedRoutes = new Map<string, Route>()
   private _finally: FinalHandler = _respond
   private _catchers: Middleware[] = []
   private _posts: Middleware[] = []
@@ -23,33 +23,42 @@ export default class Application {
   /**
    * Add before route middleware
    * 
-   * @param {Function} fn
+   * @param {Function...} fns
    * @returns {Application}
    */
-  public pre (fn: Middleware) {
-    this._pres.push(_ensureFunction(fn))
+  public pre (...fns: Middleware[]) {
+    for (let fn of fns) {
+      this._pres.push(_ensureFunction(fn))
+    }
+
     return this
   }
 
   /**
    * Add after route middleware
    * 
-   * @param {Function} fn
+   * @param {Function...} fns
    * @returns {Application}
    */
-  public post (fn: Middleware) {
-    this._posts.push(_ensureFunction(fn))
+  public post (...fns: Middleware[]) {
+    for (let fn of fns) {
+      this._posts.push(_ensureFunction(fn))
+    }
+
     return this
   }
 
   /**
    * Add error middleware
    * 
-   * @param {Function} fn
+   * @param {Function...} fns
    * @returns {Application}
    */
-  public catch (fn: Middleware) {
-    this._catchers.push(_ensureFunction(fn))
+  public catch (...fns: Middleware[]) {
+    for (let fn of fns) {
+      this._catchers.push(_ensureFunction(fn))
+    }
+
     return this
   }
 
@@ -67,17 +76,19 @@ export default class Application {
   /**
    * Add router's routes into the tree
    * 
-   * @param {Router} router
+   * @param {Router...} routers
    * @returns {Application}
    */
-  public use (router: Router) {
-    for (let route of router.routes()) {
-      for (let [method, fns] of route.handlers()) {
-        this._tree.on(method, route.path, this._compose(fns))
-      }
+  public use (...routers: Router[]) {
+    for (let router of routers) {
+      for (let route of router.routes()) {
+        for (let [method, fns] of route.handlers()) {
+          this._tree.on(method, route.path, this._compose(fns))
+        }
 
-      // register named route
-      if (route.name) this._namedRoutes.set(route.name, route)
+        // TODO register named route
+        // if (route.name) this._namedRoutes.set(route.name, route)
+      }
     }
 
     return this
@@ -221,8 +232,8 @@ export default class Application {
       var fn = fns[i++]
 
       if (!fn) {
-        next = _noop
         fn = this._finally
+        next = undefined as any
       }
 
       // async call
@@ -287,13 +298,4 @@ function _ensureFunction<T> (arg: T): T {
  */
 function _respond ({ response }: Context) {
   response.send()
-}
-
-/**
- * Noop
- * 
- * @private
- */
-function _noop () {
-  // do nothing
 }
