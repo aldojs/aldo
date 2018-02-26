@@ -1,9 +1,10 @@
 {
   "name": "aldo",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "Fast web framework for Node.js",
   "main": "lib/index.js",
   "scripts": {
+    "build": "tsc",
     "prepublishOnly": "tsc && npm test",
     "test": "mocha -r ts-node/register \"src/**/*.spec.ts\""
   },
@@ -31,7 +32,7 @@
   },
   "dependencies": {
     "@types/node": "^8.9.2",
-    "aldo-http": "^0.1.2",
+    "aldo-http": "^0.1.3",
     "find-my-way": "^1.10.1"
   }
 }
