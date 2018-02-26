@@ -239,7 +239,7 @@ export default class Application {
    * @param {Object} ctx
    */
   private _loopError (err: any, ctx: Context) {
-    // TODO ensure err is an Error instance
+    // TODO ensure `err` is an Error instance
 
     // set the context error
     ctx.error = err

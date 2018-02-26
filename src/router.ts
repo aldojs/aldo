@@ -12,7 +12,7 @@ export default class Router {
   private _middlewares: Middleware[] = []
   private _routes: Route[] = []
 
-  public constructor (private _prefix: string = '') {
+  public constructor (private _prefix = '') {
     // 
   }
 
@@ -49,11 +49,10 @@ export default class Router {
    * @returns {Route}
    */
   public route (path: string): Route {
-    let instance = new Route(path, this._prefix)
-
-    this._routes.push(instance)
-
-    return instance
+    return ((route) => {
+      this._routes.push(route)
+      return route
+    })(new Route(path, this._prefix))
   }
 
   /**
@@ -63,46 +62,110 @@ export default class Router {
    * @returns {Router}
    */
   public use (...fns: Middleware[]) {
-    fns.forEach((fn) => {
+    for (let fn of fns) {
       this._middlewares.push(_ensureFunction(fn))
-    })
+    }
 
     return this
   }
 
-  public head (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for HEAD method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public head (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).head(...this._middlewares.concat(handlers))
   }
 
-  public get (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for GET method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public get (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).get(...this._middlewares.concat(handlers))
   }
 
-  public post (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for POST method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public post (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).post(...this._middlewares.concat(handlers))
   }
 
-  public put (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for PUT method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public put (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).put(...this._middlewares.concat(handlers))
   }
 
-  public patch (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for PATCH method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public patch (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).patch(...this._middlewares.concat(handlers))
   }
 
-  public delete (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for DELETE method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public delete (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).delete(...this._middlewares.concat(handlers))
   }
 
-  public options (path: string, ...handlers: Middleware[]) {
-    return this.route(path).options(...this._middlewares.concat(handlers))
+  /**
+   * Make new route and set the handlers for OPTIONS method
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public options (path: string, ...handlers: Middleware[]): Route {
+    return this.route(path).options(...this._middlewares.concat(handlers));
   }
 
-  public all (path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for accepted methods
+   * 
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public all (path: string, ...handlers: Middleware[]): Route {
     return this.route(path).all(...this._middlewares.concat(handlers))
   }
 
-  public any (methods: string[], path: string, ...handlers: Middleware[]) {
+  /**
+   * Make new route and set the handlers for the given HTTP method
+   * 
+   * @param {Array<String>} methods
+   * @param {String} path
+   * @param {Function...} handlers
+   * @returns {Route}
+   */
+  public any (methods: string[], path: string, ...handlers: Middleware[]): Route {
     return this.route(path).any(methods, ...this._middlewares.concat(handlers))
   }
 }

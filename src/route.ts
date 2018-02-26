@@ -174,9 +174,9 @@ export default class Route {
   public any (methods: string[], ...fns: Middleware[]) {
     assert(fns.length, 'At least one route handler is required.')
 
-    fns.forEach((fn) => {
+    for (let fn of fns) {
       assert(typeof fn === 'function', 'Route handler must be a function.')
-    })
+    }
 
     // wrap the final handler
     fns = _wrapFinalHandler(fns)
@@ -233,11 +233,6 @@ function _wrapper (fn: FinalHandler): Middleware {
   return async (ctx, next) => {
     try {
       var result = await fn(ctx)
-
-      if (result instanceof Error) {
-        next(result)
-        return
-      }
 
       if (result && !ctx.response.body) {
         ctx.response.body = result
