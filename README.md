@@ -1,7 +1,6 @@
 
-`Aldo` is yet another library to build Node.js web applications. it's goal is to provide a secure and solid foundation for your projects, a fast execution and a fluent API.
-
-It uses the best parts of `Koa`, `Express` and `Fastify` to make building restful applications fun and easy.
+`Aldo` is yet another library to build Node.js web applications.
+It uses the best parts of `Koa` and `Express` to provide a fast engine for your web projects.
 
 ## Installation
 ```bash
@@ -34,7 +33,7 @@ app.serve(3000)
 ```
 
 ## Application lifecycle
-The request handling logic is similar to the `try..catch..finally` standard JavaScript block.
+The request handling logic is similar to the `try..catch..finally` JavaScript block.
 In other words, the application will try to call the route middlewares one by one then it calls the final handler.
 If an error occurs, it will be handled by the error handlers before reaching the final handler which will terminate and send the response to the client.
 
@@ -93,15 +92,38 @@ declare interface Context {
 To extend the request context, and add more properties, you can use `app.set(key, value)`
 ```js
 // set a global value to be available for all requests
-let db = require('./services/database')
-app.set('mongo', db)
+app.set('mongo', require('./services/database'))
 
-// set a per request property
-// this time a function is passed to lazily get the value
-// In this case, each context instance has a distinct `session` property
+// set a per request property using a function to lazily get the value
+// This time, each context instance has a distinct `session` property
 app.set('session', () => new Session())
 ```
 
-`app.has(key)` and `app.get(key)` are also available to check the existence of a certain field, or the to get a previously defined property.
+`app.has(key)` and `app.get(key)` are also available to check the existence of a certain field, or to get a previously defined property.
+
+## Router
+Each `router` instance control an erea in the application, it acts like a routing namespace.
+You can use as many routers as you need. For example, a router to manage authentication, another for the API, a private router for admin routing, and so on.
+
+```js
+const { Router } = require('aldo')
+
+// Let's create an admin area router
+// `/admin` is a URL prefix for all routes
+const router = new Router('/admin')
+
+// define a single handler for admin home page for the GET method
+router.get('/', controller.showDashboard)
+
+// we can define multiple handlers per HTTP method for the same route
+router
+  .route('/users')
+  .get(controller.showUsers)
+  .delete(controller.deleteUser)
+  .post(validate, controller.addUser)
+  .put(validate, controller.modifyUser)
+```
+
+> The order of defining routes is not important any more. Thanks to the package [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
 
 ## To be continued...
