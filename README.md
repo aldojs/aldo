@@ -75,18 +75,23 @@ app.finally(finalHandler)
 Like `Koa`, each `middleware` is a function with 2 arguments, the first argument is a *`context`* object and the second is a *`function`* to call the next middleware in the chain.
 
 ```ts
-declare type Middleware = (ctx: Context, next: (err?) => void) => void
+declare type Middleware = (ctx: Context, next: (err?: any) => void) => void
 ```
 
 ## Context
 The context object is not a proxy to the request and response properties, it's a simple plain object with only 3 mandatory properties `request`, `response` and `app`.
+Even the error middlewares have the same signature, but with an additonal context property which the `error` value.
 
 ```ts
-declare interface Context {
+declare type Literal = {
+  [x: string]: any
+}
+
+declare interface Context extends Literal {
   response: Response // Response object provided by the package `aldo-http`
   request: Request   // Request object provided by the package `aldo-http`
   app: Application
-  [x: string]: any
+  error?: any
 }
 ```
 To extend the request context, and add more properties, you can use `app.set(key, value)`
@@ -104,6 +109,8 @@ app.set('session', () => new Session())
 ## Router
 Each `router` instance control an erea in the application, it acts like a routing namespace.
 You can use as many routers as you need. For example, a router to manage authentication, another for the API, a private router for admin routing, and so on.
+
+> The order of defining routes is not important any more. Thanks to [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
 
 ```js
 const { Router } = require('aldo')
@@ -123,7 +130,10 @@ router
   .post(validate, controller.addUser)
   .put(validate, controller.modifyUser)
 ```
+Note that the last handler of any route implements the `FinalHandler` interface and doesn't have the second parameter `next` like middlewares
 
-> The order of defining routes is not important any more. Thanks to the package [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
+```ts
+declare type FinalHandler = (ctx: Context) => any
+```
 
 ## To be continued...
