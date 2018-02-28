@@ -10,7 +10,7 @@ declare type ErrorMiddleware = (ctx: Context, next: () => any) => any
 
 declare type RouteStoreEntry = { handler: FinalHandler, params: Literal }
 
-declare type Middleware = (ctx: Context, next: (error?: any) => any) => any
+declare type Middleware = (ctx: Context, next: (error?: any) => any) => void
 
 declare interface Dispatcher {
   use (router: Router): any
@@ -29,6 +29,7 @@ declare interface Context extends Literal {
   response: Response
   request: Request
   app: Application
+  error?: any
 }
 
 declare interface Route {
