@@ -48,21 +48,21 @@ const app = new Application()
 
 // attach one or more global middlewares before the route
 // useful to configure global services like session, cache ...etc
-app.pre(middleware)
+app.pre(...middlewares)
 
 // use one or many routers with `.use`
-app.use(router)
+app.use(...routers)
 // ... etc
 
 // attach global middlewares to be executed after the route handlers
 // like saving a cached version, persisting session data, setting more headers ...etc
-app.post(middleware)
+app.post(...middlewares)
 
 
 // 2. The `catch` block
 
 // attaching error handlers is done as below
-app.catch(middleware)
+app.catch(...middlewares)
 
 
 // 3. The `finally` block
@@ -114,21 +114,22 @@ You can use as many routers as you need. For example, a router to manage authent
 
 ```js
 const { Router } = require('aldo')
+const { users } = require('./controllers')
 
 // Let's create an admin area router
 // `/admin` is a URL prefix for all routes
 const router = new Router('/admin')
 
 // define a single handler for admin home page for the GET method
-router.get('/', controller.showDashboard)
+router.get('/', users.home)
 
 // we can define multiple handlers per HTTP method for the same route
 router
   .route('/users')
-  .get(controller.showUsers)
-  .delete(controller.deleteUser)
-  .post(validate, controller.addUser)
-  .put(validate, controller.modifyUser)
+  .get(users.show)
+  .delete(users.delete)
+  .post(users.validate, users.add)
+  .put(users.validate, users.modify)
 ```
 Note that the last handler of any route implements the `FinalHandler` interface and doesn't have the second parameter `next` like middlewares
 
