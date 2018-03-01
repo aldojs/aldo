@@ -1,5 +1,5 @@
 
-import Route from './route'
+import Route from '../src/route'
 import * as assert from 'assert'
 
 describe('Test Route', () => {

@@ -1,5 +1,5 @@
 
-import Router from './router'
+import Router from '../src/router'
 import * as assert from 'assert'
 
 describe('Test Router', () => {
