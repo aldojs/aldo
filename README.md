@@ -83,9 +83,7 @@ The context object is not a proxy to the request and response properties, it's a
 Even the error middlewares have the same signature, but with an additonal context property which the `error` value.
 
 ```ts
-declare type Literal = {
-  [x: string]: any
-}
+declare type Literal = { [x: string]: any }
 
 declare interface Context extends Literal {
   response: Response // Response object provided by the package `aldo-http`
@@ -94,14 +92,14 @@ declare interface Context extends Literal {
   error?: any
 }
 ```
-To extend the request context, and add more properties, you can use `app.set(key, value)`
+To extend the request context, and add more properties, you can use `app.set(key, value)` or `app.bind(key, factory)`
 ```js
 // set a global value to be available for all requests
 app.set('mongo', require('./services/database'))
 
 // set a per request property using a function to lazily get the value
 // This time, each context instance has a distinct `session` property
-app.set('session', () => new Session())
+app.bind('session', () => new Session())
 ```
 
 `app.has(key)` and `app.get(key)` are also available to check the existence of a certain field, or to get a previously defined property.

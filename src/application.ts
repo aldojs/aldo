@@ -12,8 +12,7 @@ import { Route, Middleware, Context, FinalHandler, Router } from './types'
  * @class Application
  */
 export default class Application {
-  private _context: Context = { app: this } as any
-  // private _namedRoutes = new Map<string, Route>()
+  private _context: Context = Object.create(null)
   private _finally: FinalHandler = _respond
   private _catchers: Middleware[] = []
   private _posts: Middleware[] = []
@@ -87,7 +86,6 @@ export default class Application {
         }
 
         // TODO register named route
-        // if (route.name) this._namedRoutes.set(route.name, route)
       }
     }
 
@@ -111,8 +109,7 @@ export default class Application {
     if (!found) {
       let err = _notFoundError(url)
 
-      this._loopError(err, ctx)
-      return
+      return this._loopError(err, ctx)
     }
 
     // add url params to the context
@@ -133,34 +130,43 @@ export default class Application {
   }
 
   /**
-   * Extend the app context by adding more properties
+   * Extend the app context by adding per instance attribute
+   * 
+   * @param {String} prop
+   * @param {Function} fn
+   * @returns {Application}
+   */
+  public bind (prop: string, fn: (ctx: Context) => any): this {
+    var field = `_${prop}`
+
+    Reflect.defineProperty(this._context, prop, {
+      configurable: true,
+      enumerable: true,
+      get: function _get () {
+        if (!(field in this)) {
+          (this as Context)[field] = fn(this as Context)
+        }
+
+        return (this as Context)[field]
+      }
+    })
+
+    return this
+  }
+
+  /**
+   * Extend the app context by adding shared properties
    * 
    * @param {String} prop
    * @param {Any} value
    * @returns {Application}
    */
   public set (prop: string, value: any) {
-    var descriptor: PropertyDescriptor = {
-      configurable: true,
-      enumerable: true
-    }
-
-    // factory
     if (typeof value === 'function') {
-      let fn = value
-      let field = `_${prop}`
-
-      descriptor.get = function _get () {
-        return (this as Context)[field] || ((this as Context)[field] = fn(this))
-      }
-    }
-    else {
-      descriptor.value = value
+      return this.bind(prop, value)
     }
 
-    // define
-    Object.defineProperty(this._context, prop, descriptor)
-
+    this._context[prop] = value
     return this
   }
 
@@ -170,7 +176,7 @@ export default class Application {
    * @param {String} prop
    * @returns {Any}
    */
-  public get (prop: string) {
+  public get (prop: string): any {
     return this._context[prop]
   }
 
@@ -197,6 +203,7 @@ export default class Application {
 
     ctx.response = response
     ctx.request = request
+    ctx.app = this
 
     return ctx
   }
