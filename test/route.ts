@@ -1,4 +1,5 @@
 
+import 'mocha'
 import Route from '../src/route'
 import * as assert from 'assert'
 

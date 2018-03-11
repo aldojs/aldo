@@ -1,15 +1,15 @@
 
 import { Server } from 'http'
 import { setImmediate } from 'timers'
-// import * as createDebugger from 'debug'
+import * as createDebugger from 'debug'
 import * as TreeRouter from 'find-my-way'
 import { Request, Response, createServer } from 'aldo-http'
 import { Route, Middleware, Context, FinalHandler, Router } from './types'
 
+const debug = createDebugger('aldo:application')
+
 /**
- * A global facade to manage routes, error handlers
- * 
- * @class Application
+ * A global facade to manage routes, error handlers, dispatching...
  */
 export default class Application {
   private _context: Context = Object.create(null)
@@ -22,12 +22,12 @@ export default class Application {
   /**
    * Add before route middleware
    * 
-   * @param {Function...} fns
-   * @returns {Application}
+   * @param fns
    */
-  public pre (...fns: Middleware[]) {
+  public pre (...fns: Middleware[]): this {
     for (let fn of fns) {
       this._pres.push(_ensureFunction(fn))
+      debug(`use pre middleware: ${fn.name || '<anonymous>'}`)
     }
 
     return this
@@ -36,12 +36,12 @@ export default class Application {
   /**
    * Add after route middleware
    * 
-   * @param {Function...} fns
-   * @returns {Application}
+   * @param fns
    */
-  public post (...fns: Middleware[]) {
+  public post (...fns: Middleware[]): this {
     for (let fn of fns) {
       this._posts.push(_ensureFunction(fn))
+      debug(`use post middleware: ${fn.name || '<anonymous>'}`)
     }
 
     return this
@@ -50,12 +50,12 @@ export default class Application {
   /**
    * Add error middleware
    * 
-   * @param {Function...} fns
-   * @returns {Application}
+   * @param fns
    */
-  public catch (...fns: Middleware[]) {
+  public catch (...fns: Middleware[]): this {
     for (let fn of fns) {
       this._catchers.push(_ensureFunction(fn))
+      debug(`use error middleware: ${fn.name || '<anonymous>'}`)
     }
 
     return this
@@ -64,28 +64,27 @@ export default class Application {
   /**
    * Set the final request handler
    * 
-   * @param {Function} fn
-   * @returns {Application}
+   * @param fn final request handler
    */
-  public finally (fn: FinalHandler) {
+  public finally (fn: FinalHandler): this {
     this._finally = _ensureFunction(fn)
+    debug(`use final handler: ${fn.name || '<anonymous>'}`)
     return this
   }
 
   /**
    * Add router's routes into the tree
    * 
-   * @param {Router...} routers
-   * @returns {Application}
+   * @param routers
    */
-  public use (...routers: Router[]) {
+  public use (...routers: Router[]): this {
     for (let router of routers) {
       for (let route of router.routes()) {
         for (let [method, fns] of route.handlers()) {
           this._tree.on(method, route.path, this._compose(fns))
         }
 
-        // TODO register named route
+        // TODO register named routes
       }
     }
 
@@ -95,20 +94,21 @@ export default class Application {
   /**
    * Dispatch the request/response to the matched route handler
    * 
-   * @param {Request} request
-   * @param {Response} response
+   * @param request
+   * @param response
    */
   public dispatch (request: Request, response: Response): void {
     var { method, url } = request
     var found = this._tree.find(method, url)
     var ctx = this._makeContext(request, response)
 
-    // debug(`dispatch ${method} ${url}`)
+    debug(`dispatching ${method} ${url}`)
 
     // 404
     if (!found) {
-      let err = _notFoundError(url)
+      let err = _notFoundError(`Route not found for "${url}".`)
 
+      debug(`route not found for "${url}"`)
       return this._loopError(err, ctx)
     }
 
@@ -122,8 +122,7 @@ export default class Application {
   /**
    * Create a HTTP server and pass the arguments to `listen` method
    * 
-   * @param {Any...} args
-   * @returns {Server}
+   * @param args
    */
   public serve (...args: any[]): Server {
     return createServer(this.dispatch.bind(this)).listen(...args)
@@ -132,9 +131,8 @@ export default class Application {
   /**
    * Extend the app context by adding per instance attribute
    * 
-   * @param {String} prop
-   * @param {Function} fn
-   * @returns {Application}
+   * @param prop
+   * @param fn factory function
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
     var field = `_${prop}`
@@ -157,11 +155,10 @@ export default class Application {
   /**
    * Extend the app context by adding shared properties
    * 
-   * @param {String} prop
-   * @param {Any} value
-   * @returns {Application}
+   * @param prop
+   * @param value
    */
-  public set (prop: string, value: any) {
+  public set (prop: string, value: any): this {
     if (typeof value === 'function') {
       return this.bind(prop, value)
     }
@@ -173,8 +170,7 @@ export default class Application {
   /**
    * Get a value from the app context
    * 
-   * @param {String} prop
-   * @returns {Any}
+   * @param prop
    */
   public get (prop: string): any {
     return this._context[prop]
@@ -183,22 +179,20 @@ export default class Application {
   /**
    * Check if the prop is defined in the app context
    * 
-   * @param {String} prop
-   * @returns {Boolean}
+   * @param prop
    */
-  public has (prop: string) {
+  public has (prop: string): boolean {
     return prop in this._context
   }
 
   /**
    * Create a new copy of the context object
    * 
-   * @param {Request} request
-   * @param {Response} response
-   * @returns {Object}
+   * @param request
+   * @param response
    * @private
    */
-  private _makeContext (request: Request, response: Response) {
+  private _makeContext (request: Request, response: Response): Context {
     var ctx: Context = Object.create(this._context)
 
     ctx.response = response
@@ -211,8 +205,7 @@ export default class Application {
   /**
    * Compose the middleware list into a callable function
    * 
-   * @param {Array<Function>} fns
-   * @returns {Function}
+   * @param fns middlewares
    * @private
    */
   private _compose (fns: Middleware[]): FinalHandler {
@@ -224,10 +217,11 @@ export default class Application {
   /**
    * Loop over the route middlewares
    * 
-   * @param {Object} ctx
-   * @param {Array<Function>} fns
+   * @param ctx
+   * @param fns
+   * @private
    */
-  private _loopMiddleware (ctx: Context, fns: Middleware[]) {
+  private _loopMiddleware (ctx: Context, fns: Middleware[]): void {
     var i = 0
 
     var next = (err?: any) => {
@@ -253,8 +247,9 @@ export default class Application {
   /**
    * Loop over the error middlewares
    * 
-   * @param {Error} err
-   * @param {Object} ctx
+   * @param err
+   * @param ctx
+   * @private
    */
   private _loopError (err: any, ctx: Context) {
     // TODO ensure `err` is an Error instance
@@ -269,12 +264,10 @@ export default class Application {
 /**
  * Create a 404 error instance
  * 
- * @param {String} path
- * @returns {Error}
+ * @param msg
  * @private
  */
-function _notFoundError (path: string) {
-  var msg = `Route not found for "${path}".`
+function _notFoundError (msg: string) {
   var error: any = new Error(msg)
 
   error.code = 'NOT_FOUND'
@@ -287,8 +280,7 @@ function _notFoundError (path: string) {
 /**
  * Ensure the given argument is a function
  * 
- * @param {Any} arg
- * @returns {Function}
+ * @param arg
  * @private
  */
 function _ensureFunction<T> (arg: T): T {
@@ -300,9 +292,9 @@ function _ensureFunction<T> (arg: T): T {
 /**
  * Send the response
  * 
- * @param {Object} context
+ * @param ctx
  * @private
  */
-function _respond ({ response }: Context) {
-  response.send()
+function _respond (ctx: Context) {
+  ctx.response.send()
 }
