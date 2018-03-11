@@ -102,13 +102,13 @@ export default class Application {
     var found = this._tree.find(method, url)
     var ctx = this._makeContext(request, response)
 
-    debug(`dispatching ${method} ${url}`)
+    debug(`dispatching: ${method} ${url}`)
 
     // 404
     if (!found) {
       let err = _notFoundError(`Route not found for ${method} ${url}`)
 
-      debug(`no handler for ${method} ${url}`)
+      debug(`handler not found: ${method} ${url}`)
       return this._loopError(err, ctx)
     }
 

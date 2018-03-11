@@ -169,7 +169,7 @@ export default class Route {
       assert(!this._handlers.has(method), `Method '${method}' already defined for "${this.path}"`)
       assert(METHODS.includes(method.toUpperCase()), `Method '${method}' not accepted.`)
 
-      debug(`add route ${method.toUpperCase()} ${this.path}`)
+      debug(`add handlers for ${method.toUpperCase()} ${this.path}`)
       this._handlers.set(method, fns)
     }
 

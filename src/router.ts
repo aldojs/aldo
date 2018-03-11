@@ -2,6 +2,9 @@
 import Route from './route'
 import * as assert from 'assert'
 import { Middleware } from './types'
+import * as createDebugger from 'debug'
+
+const debug = createDebugger('aldo:router')
 
 /**
  * Routes factory and manager
@@ -24,6 +27,7 @@ export default class Router {
    */
   public prefix (value: string) {
     this._prefix = value
+    debug(`update route prefix to ${this._prefix}`)
 
     // set the prefix for the registered routes
     for (let route of this._routes) {
@@ -49,10 +53,12 @@ export default class Router {
    * @returns {Route}
    */
   public route (path: string): Route {
-    return ((route) => {
-      this._routes.push(route)
-      return route
-    })(new Route(path, this._prefix))
+    var route = new Route(path, this._prefix)
+
+    debug(`create route for ${path}`)
+    this._routes.push(route)
+
+    return route
   }
 
   /**
@@ -64,6 +70,7 @@ export default class Router {
   public use (...fns: Middleware[]) {
     for (let fn of fns) {
       this._middlewares.push(_ensureFunction(fn))
+      debug(`use route middleware: ${fn.name || '<anonymous>'}`)
     }
 
     return this
