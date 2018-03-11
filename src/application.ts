@@ -106,9 +106,9 @@ export default class Application {
 
     // 404
     if (!found) {
-      let err = _notFoundError(`Route not found for "${url}".`)
+      let err = _notFoundError(`Route not found for ${method} ${url}`)
 
-      debug(`route not found for "${url}"`)
+      debug(`no handler for ${method} ${url}`)
       return this._loopError(err, ctx)
     }
 

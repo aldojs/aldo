@@ -1,14 +1,14 @@
 
 import { join } from 'path'
 import * as assert from 'assert'
+import * as createDebugger from 'debug'
 import { Middleware, FinalHandler } from './types'
 
+const debug = createDebugger('aldo:route')
 const METHODS = ['HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 
 /**
  * Route container
- * 
- * @class Route
  */
 export default class Route {
   private _handlers = new Map<string, Middleware[]>()
@@ -19,9 +19,8 @@ export default class Route {
   /**
    * Initialize a new route instance
    * 
-   * @param {String} path
-   * @param {String} [prefix]
-   * @constructor
+   * @param path
+   * @param prefix
    */
   public constructor (path: string, prefix: string = '') {
     this._prefix = _normalize(prefix)
@@ -31,8 +30,6 @@ export default class Route {
 
   /**
    * The route path
-   * 
-   * @type {String}
    */
   public get path (): string {
     return join(this._prefix, this._path)
@@ -40,8 +37,6 @@ export default class Route {
 
   /**
    * The route name
-   * 
-   * @type {String}
    */
   public get name (): string {
     return this._name
@@ -51,30 +46,28 @@ export default class Route {
    * Set the route name
    * 
    * @param {String} name
-   * @returns {Route}
    */
-  public as (name: string) {
+  public as (name: string): this {
     this._name = name
+    debug(`set route name to "${this._name}"`)
     return this
   }
 
   /**
    * Set the route prefix
    * 
-   * @param {String} path
-   * @returns {Route}
+   * @param path
    * 
    * @todo add test case for "/" path
    */
   public prefix (path: string) {
     this._prefix = _normalize(path)
+    debug(`set route prefix to "${this._prefix}"`)
     return this
   }
 
   /**
    * Get an iterator of the route handlers
-   * 
-   * @returns {Array<[String, Array<Function>]>}
    */
   public handlers (): [string, Middleware[]][] {
     return Array.from(this._handlers)
@@ -83,70 +76,63 @@ export default class Route {
   /**
    * Set handlers for HEAD method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public head (...fns: Middleware[]) {
+  public head (...fns: Middleware[]): this {
     return this.any(['HEAD'], ...fns)
   }
 
   /**
    * Set handlers for HEAD and GET methods
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public get (...fns: Middleware[]) {
+  public get (...fns: Middleware[]): this {
     return this.any(['HEAD', 'GET'], ...fns)
   }
 
   /**
    * Set handlers for POST method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public post (...fns: Middleware[]) {
+  public post (...fns: Middleware[]): this {
     return this.any(['POST'], ...fns)
   }
 
   /**
    * Set handlers for PUT method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param  fns
    */
-  public put (...fns: Middleware[]) {
+  public put (...fns: Middleware[]): this {
     return this.any(['PUT'], ...fns)
   }
 
   /**
    * Set handlers for PATCH method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public patch (...fns: Middleware[]) {
+  public patch (...fns: Middleware[]): this {
     return this.any(['PATCH'], ...fns)
   }
 
   /**
    * Set handlers for DELETE method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public delete (...fns: Middleware[]) {
+  public delete (...fns: Middleware[]): this {
     return this.any(['DELETE'], ...fns)
   }
 
   /**
    * Set handlers for OPTIONS method
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public options (...fns: Middleware[]) {
+  public options (...fns: Middleware[]): this {
     return this.any(['OPTIONS'], ...fns)
   }
 
@@ -155,10 +141,9 @@ export default class Route {
    * 
    * Only 'HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS' are available
    * 
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param fns
    */
-  public all (...fns: Middleware[]) {
+  public all (...fns: Middleware[]): this {
     return this.any(METHODS, ...fns)
   }
 
@@ -167,11 +152,10 @@ export default class Route {
    * 
    * Only 'HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS' are accepted
    * 
-   * @param {Array<String>} methods
-   * @param {Function...} fns
-   * @returns {Route}
+   * @param methods
+   * @param fns
    */
-  public any (methods: string[], ...fns: Middleware[]) {
+  public any (methods: string[], ...fns: Middleware[]): this {
     assert(fns.length, 'At least one route handler is required.')
 
     for (let fn of fns) {
@@ -185,6 +169,7 @@ export default class Route {
       assert(!this._handlers.has(method), `Method '${method}' already defined for "${this.path}"`)
       assert(METHODS.includes(method.toUpperCase()), `Method '${method}' not accepted.`)
 
+      debug(`add route ${method.toUpperCase()} ${this.path}`)
       this._handlers.set(method, fns)
     }
 
@@ -195,8 +180,7 @@ export default class Route {
 /**
  * Normalize the URL path
  * 
- * @param {String} path
- * @returns {String}
+ * @param path
  * @private
  */
 function _normalize (path: string): string {
@@ -210,11 +194,10 @@ function _normalize (path: string): string {
 /**
  * Wrap the last middleware function
  * 
- * @param {Array<Function>} handlers
- * @returns {Array<Function>}
+ * @param handlers
  * @private
  */
-function _wrapFinalHandler (handlers: Middleware[]) {
+function _wrapFinalHandler (handlers: Middleware[]): Middleware[] {
   let fn = handlers.pop() as FinalHandler
 
   handlers.push(_wrapper(fn))
@@ -225,8 +208,7 @@ function _wrapFinalHandler (handlers: Middleware[]) {
 /**
  * Get the final handler wrapper
  * 
- * @param {Function} fn
- * @returns {Function}
+ * @param fn
  * @private
  */
 function _wrapper (fn: FinalHandler): Middleware {
