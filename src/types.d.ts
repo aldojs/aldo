@@ -1,6 +1,8 @@
 
-import * as http from 'http'
-import { Request, Response } from 'aldo-http'
+/// <reference types="node" />
+
+import { ListenOptions } from 'net'
+import { Request, Response, Server, CreateServerOptions } from 'aldo-http'
 
 declare type Literal = { [x: string]: any; };
 
@@ -13,16 +15,26 @@ declare type RouteStoreEntry = { handler: FinalHandler; params: Literal; };
 declare type Middleware = (ctx: Context, next: (error?: any) => any) => void;
 
 declare interface Dispatcher {
-  use(router: Router): any;
-  pre(fn: Middleware): any;
-  post(fn: Middleware): any;
-  catch(fn: Middleware): any;
+  use(...router: Router[]): any;
+  pre(...fn: Middleware[]): any;
+  post(...fn: Middleware[]): any;
+  catch(...fn: Middleware[]): any;
   finally(fn: FinalHandler): any;
   dispatch(req: Request, res: Response): any;
 }
 
-declare interface Application extends Dispatcher {
-  serve(...args: any[]): http.Server;
+declare interface Container {
+  get(prop: string): any;
+  has(prop: string): boolean;
+  set(prop: string, value: any): this;
+  bind(prop: string, fn: (ctx: Context) => any): this;
+  makeContext(request: Request, response: Response): Context;
+}
+
+declare interface Application extends Dispatcher, Container {
+  stop(): Promise<Server>;
+  start(port: number, options?: CreateServerOptions): Promise<Server>;
+  start(opts: ListenOptions, options?: CreateServerOptions): Promise<Server>;
 }
 
 declare interface Context extends Literal {

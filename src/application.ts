@@ -1,10 +1,10 @@
 
-import { Server } from 'http'
+import { ListenOptions } from 'net'
 import { setImmediate } from 'timers'
 import * as createDebugger from 'debug'
 import * as TreeRouter from 'find-my-way'
-import { Request, Response, createServer } from 'aldo-http'
 import { Route, Middleware, Context, FinalHandler, Router } from './types'
+import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
 
 const debug = createDebugger('aldo:application')
 
@@ -18,6 +18,7 @@ export default class Application {
   private _posts: Middleware[] = []
   private _pres: Middleware[] = []
   private _tree = new TreeRouter()
+  private _server: Server
 
   /**
    * Add before route middleware
@@ -100,7 +101,7 @@ export default class Application {
   public dispatch (request: Request, response: Response): void {
     var { method, url } = request
     var found = this._tree.find(method, url)
-    var ctx = this._makeContext(request, response)
+    var ctx = this.makeContext(request, response)
 
     debug(`dispatching: ${method} ${url}`)
 
@@ -120,12 +121,41 @@ export default class Application {
   }
 
   /**
-   * Create a HTTP server and pass the arguments to `listen` method
+   * Start listening for requests
    * 
-   * @param args
+   * @param opts
+   * @param options
    */
-  public serve (...args: any[]): Server {
-    return createServer(this.dispatch.bind(this)).listen(...args)
+  public async start (opts: ListenOptions, options?: CreateServerOptions): Promise<Server>
+  /**
+   * Start listening for requests
+   * 
+   * @param port
+   * @param options
+   */
+  public async start (port: number, options?: CreateServerOptions): Promise<Server>
+  public async start (one: any, two: any = {}) {
+    this._server = createServer(two, this.dispatch.bind(this))
+
+    if (typeof one === 'number') one = { port: one }
+
+    // listen
+    await this._server.start(one)
+
+    debug(`app started with %o`, one)
+
+    return this._server
+  }
+
+  /**
+   * Stop listening for requests
+   */
+  public async stop (): Promise<Server> {
+    await this._server.stop()
+
+    debug(`app stopped`)
+
+    return this._server
   }
 
   /**
@@ -137,15 +167,11 @@ export default class Application {
   public bind (prop: string, fn: (ctx: Context) => any): this {
     var field = `_${prop}`
 
-    Reflect.defineProperty(this._context, prop, {
-      configurable: true,
+    Object.defineProperty(this._context, prop, {
       enumerable: true,
+      configurable: true,
       get: function _get () {
-        if (!(field in this)) {
-          (this as Context)[field] = fn(this as Context)
-        }
-
-        return (this as Context)[field]
+        return (this as Context)[field] || ((this as Context)[field] = fn(this as Context))
       }
     })
 
@@ -190,9 +216,8 @@ export default class Application {
    * 
    * @param request
    * @param response
-   * @private
    */
-  private _makeContext (request: Request, response: Response): Context {
+  public makeContext (request: Request, response: Response): Context {
     var ctx: Context = Object.create(this._context)
 
     ctx.response = response
