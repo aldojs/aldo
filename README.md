@@ -29,7 +29,7 @@ app.use(router)
 
 // we serve the application,
 // which creates and uses an internal HTTP server
-app.serve(3000)
+app.start(3000)
 ```
 
 ## Application lifecycle
@@ -86,10 +86,11 @@ Even the error middlewares have the same signature, but with an additonal contex
 declare type Literal = { [x: string]: any }
 
 declare interface Context extends Literal {
-  response: Response // Response object provided by the package `aldo-http`
-  request: Request   // Request object provided by the package `aldo-http`
-  app: Application
-  error?: any
+  response: Response; // Response object provided by the package `aldo-http`
+  request: Request;   // Request object provided by the package `aldo-http`
+  app: Application;   // Application instance
+  params: Literal;    // Route parameters
+  error?: any;        // The error
 }
 ```
 To extend the request context, and add more properties, you can use `app.set(key, value)` or `app.bind(key, factory)`
@@ -112,22 +113,22 @@ You can use as many routers as you need. For example, a router to manage authent
 
 ```js
 const { Router } = require('aldo')
-const { users } = require('./controllers')
+const { Users } = require('./controllers')
 
 // Let's create an admin area router
 // `/admin` is a URL prefix for all routes
 const router = new Router('/admin')
 
 // define a single handler for admin home page for the GET method
-router.get('/', users.home)
+router.get('/', Users.home)
 
 // we can define multiple handlers per HTTP method for the same route
 router
-  .route('/users')
-  .get(users.show)
-  .delete(users.delete)
-  .post(users.validate, users.add)
-  .put(users.validate, users.modify)
+  .route('/Users')
+  .get(Users.show)
+  .delete(Users.delete)
+  .post(Users.validate, Users.add)
+  .put(Users.validate, Users.modify)
 ```
 Note that the last handler of any route implements the `FinalHandler` interface and doesn't have the second parameter `next` like middlewares
 
@@ -135,4 +136,5 @@ Note that the last handler of any route implements the `FinalHandler` interface 
 declare type FinalHandler = (ctx: Context) => any
 ```
 
-## To be continued...
+## License
+[MIT License](https://opensource.org/licenses/MIT)
