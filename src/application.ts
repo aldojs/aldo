@@ -9,7 +9,7 @@ import { Request, Response, Server, createServer, CreateServerOptions } from 'al
 const debug = createDebugger('aldo:application')
 
 /**
- * A global facade to manage routes, error handlers, dispatching...
+ * A global facade to manage routes, error handlers, dispatching, etc...
  */
 export default class Application {
   private _context: Context = Object.create(null)

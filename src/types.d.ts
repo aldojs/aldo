@@ -34,13 +34,14 @@ declare interface Container {
 declare interface Application extends Dispatcher, Container {
   stop(): Promise<Server>;
   start(port: number, options?: CreateServerOptions): Promise<Server>;
-  start(opts: ListenOptions, options?: CreateServerOptions): Promise<Server>;
+  start(listenOptions: ListenOptions, options?: CreateServerOptions): Promise<Server>;
 }
 
 declare interface Context extends Literal {
   error?: any;
-  request: Request;
+  params: Literal;
   app: Application;
+  request: Request;
   response: Response;
 }
 
