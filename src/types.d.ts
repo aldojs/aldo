@@ -6,6 +6,8 @@ import { Request, Response, Server, CreateServerOptions } from 'aldo-http'
 
 declare type Literal = { [x: string]: any; };
 
+declare type Factory = (ctx: Context) => any;
+
 declare type FinalHandler = (ctx: Context) => any;
 
 declare type ErrorMiddleware = (ctx: Context, next: () => any) => any;
@@ -20,21 +22,22 @@ declare interface Dispatcher {
   post(...fn: Middleware[]): any;
   catch(...fn: Middleware[]): any;
   finally(fn: FinalHandler): any;
-  dispatch(req: Request, res: Response): any;
+  dispatch(ctx: Context): any;
 }
 
 declare interface Container {
   get(prop: string): any;
   has(prop: string): boolean;
   set(prop: string, value: any): this;
-  bind(prop: string, fn: (ctx: Context) => any): this;
+  bind(prop: string, fn: Factory): this;
   makeContext(request: Request, response: Response): Context;
 }
 
 declare interface Application extends Dispatcher, Container {
   stop(): Promise<Server>;
-  start(port: number, options?: CreateServerOptions): Promise<Server>;
-  start(listenOptions: ListenOptions, options?: CreateServerOptions): Promise<Server>;
+  callback(): (request: Request, response: Response) => void;
+  start(port: number, ServerOptions?: CreateServerOptions): Promise<Server>;
+  start(listenOptions: ListenOptions, ServerOptions?: CreateServerOptions): Promise<Server>;
 }
 
 declare interface Context extends Literal {

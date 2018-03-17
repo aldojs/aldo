@@ -3,7 +3,7 @@ import { ListenOptions } from 'net'
 import { setImmediate } from 'timers'
 import * as createDebugger from 'debug'
 import * as TreeRouter from 'find-my-way'
-import { Route, Middleware, Context, FinalHandler, Router } from './types'
+import { Route, Middleware, Context, FinalHandler, Router, Factory } from './types'
 import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
 
 const debug = createDebugger('aldo:application')
@@ -18,6 +18,7 @@ export default class Application {
   private _posts: Middleware[] = []
   private _pres: Middleware[] = []
   private _tree = new TreeRouter()
+  private _routes: Route[] = []
   private _server: Server
 
   /**
@@ -80,16 +81,22 @@ export default class Application {
    */
   public use (...routers: Router[]): this {
     for (let router of routers) {
-      for (let route of router.routes()) {
-        for (let [method, fns] of route.handlers()) {
-          this._tree.on(method, route.path, this._compose(fns))
-        }
-
-        // TODO register named routes
-      }
+      this._routes.push(...router.routes())
+      debug('use routes')
     }
 
     return this
+  }
+
+  /**
+   * Return a request handler callback
+   */
+  public callback (): (request: Request, response: Response) => void {
+    this._compileRoutes()
+
+    return (request: Request, response: Response) => {
+      this.dispatch(this.makeContext(request, response))
+    }
   }
 
   /**
@@ -98,10 +105,9 @@ export default class Application {
    * @param request
    * @param response
    */
-  public dispatch (request: Request, response: Response): void {
-    var { method, url } = request
+  public dispatch (ctx: Context): void {
+    var { method, url } = ctx.request
     var found = this._tree.find(method, url)
-    var ctx = this.makeContext(request, response)
 
     debug(`dispatching: ${method} ${url}`)
 
@@ -123,10 +129,10 @@ export default class Application {
   /**
    * Start listening for requests
    * 
-   * @param opts
-   * @param options
+   * @param listenOptions
+   * @param serverOptions
    */
-  public async start (opts: ListenOptions, options?: CreateServerOptions): Promise<Server>
+  public async start (listenOptions: ListenOptions, serverOptions?: CreateServerOptions): Promise<Server>
   /**
    * Start listening for requests
    * 
@@ -134,15 +140,15 @@ export default class Application {
    * @param options
    */
   public async start (port: number, options?: CreateServerOptions): Promise<Server>
-  public async start (one: any, two: any = {}) {
-    this._server = createServer(two, this.dispatch.bind(this))
+  public async start (arg: any, options: any = {}) {
+    this._server = createServer(options, this.callback())
 
-    if (typeof one === 'number') one = { port: one }
+    if (typeof arg === 'number') arg = { port: arg }
 
     // listen
-    await this._server.start(one)
+    await this._server.start(arg)
 
-    debug(`app started with %o`, one)
+    debug(`app started with %o`, arg)
 
     return this._server
   }
@@ -159,19 +165,28 @@ export default class Application {
   }
 
   /**
-   * Extend the app context by adding per instance attribute
+   * Extend the app context by adding per instance property
    * 
    * @param prop
-   * @param fn factory function
+   * @param fn
    */
-  public bind (prop: string, fn: (ctx: Context) => any): this {
+  public bind (prop: string, fn: Factory): this {
+    _ensureFunction(fn)
+
     var field = `_${prop}`
 
-    Object.defineProperty(this._context, prop, {
-      enumerable: true,
+    Reflect.defineProperty(this._context, prop, {
       configurable: true,
-      get: function _get () {
-        return (this as Context)[field] || ((this as Context)[field] = fn(this as Context))
+      enumerable: true,
+      get () {
+        if ((this as Context)[field] === undefined) {
+          // private property
+          Reflect.defineProperty(this, field, {
+            value: fn(this as Context)
+          })
+        }
+
+        return (this as Context)[field]
       }
     })
 
@@ -225,6 +240,26 @@ export default class Application {
     ctx.app = this
 
     return ctx
+  }
+
+  /**
+   * 
+   * 
+   * @private
+   */
+  private _compileRoutes (): void {
+    for (let route of this._routes) {
+      for (let [method, fns] of route.handlers()) {
+        this._tree.on(method, route.path, this._compose(fns))
+      }
+
+      // TODO register named routes
+    }
+
+    // reset the handlers
+    this._routes = []
+    this._posts = []
+    this._pres = []
   }
 
   /**
