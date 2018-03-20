@@ -6,22 +6,14 @@ import { Request, Response, Server, CreateServerOptions } from 'aldo-http'
 
 declare type Literal = { [x: string]: any; };
 
-declare type Factory = (ctx: Context) => any;
-
-declare type FinalHandler = (ctx: Context) => any;
-
-declare type ErrorMiddleware = (ctx: Context, next: () => any) => any;
-
-declare type RouteStoreEntry = { handler: FinalHandler; params: Literal; };
-
-declare type Middleware = (ctx: Context, next: (error?: any) => any) => void;
+declare type Handler = (ctx: Context) => any;
 
 declare interface Dispatcher {
   use(...router: Router[]): any;
-  pre(...fn: Middleware[]): any;
-  post(...fn: Middleware[]): any;
-  catch(...fn: Middleware[]): any;
-  finally(fn: FinalHandler): any;
+  pre(...fn: Handler[]): any;
+  post(...fn: Handler[]): any;
+  catch(...fn: Handler[]): any;
+  finally(fn: Handler): any;
   dispatch(ctx: Context): any;
 }
 
@@ -29,7 +21,7 @@ declare interface Container {
   get(prop: string): any;
   has(prop: string): boolean;
   set(prop: string, value: any): this;
-  bind(prop: string, fn: Factory): this;
+  bind(prop: string, fn: (ctx: Context) => any): this;
   makeContext(request: Request, response: Response): Context;
 }
 
@@ -52,32 +44,32 @@ declare interface Route {
   readonly path: string;
   readonly name: string;
 
-  as(name: string): any;
-  prefix(value: string): any;
-  all(...fns: Middleware[]): any;
-  get(...fns: Middleware[]): any;
-  put(...fns: Middleware[]): any;
-  head(...fns: Middleware[]): any;
-  post(...fns: Middleware[]): any;
-  patch(...fns: Middleware[]): any;
-  delete(...fns: Middleware[]): any;
-  options(...fns: Middleware[]): any;
-  any(methods: string[], ...fns: Middleware[]): any;
-  handlers(): IterableIterator<[string, Middleware[]]>;
+  as(name: string): Route;
+  prefix(value: string): Route;
+  all(...fns: Handler[]): Route;
+  get(...fns: Handler[]): Route;
+  put(...fns: Handler[]): Route;
+  head(...fns: Handler[]): Route;
+  post(...fns: Handler[]): Route;
+  patch(...fns: Handler[]): Route;
+  delete(...fns: Handler[]): Route;
+  options(...fns: Handler[]): Route;
+  handlers(): [string, Handler[]][];
+  any(methods: string[], ...fns: Handler[]): Route;
 }
 
 declare interface Router {
   routes(): Route[];
-  use(fn: Middleware): any;
-  prefix(value: string): any;
+  prefix(value: string): Router;
   route(path: string): Route;
-  all(path: string, ...fns: Middleware[]): any;
-  get(path: string, ...fns: Middleware[]): any;
-  put(path: string, ...fns: Middleware[]): any;
-  head(path: string, ...fns: Middleware[]): any;
-  post(path: string, ...fns: Middleware[]): any;
-  patch(path: string, ...fns: Middleware[]): any;
-  delete(path: string, ...fns: Middleware[]): any;
-  options(path: string, ...fns: Middleware[]): any;
-  any(method: string[], path: string, ...fns: Middleware[]): any;
+  use(...fns: Handler[]): Router;
+  all(path: string, ...fns: Handler[]): Route;
+  get(path: string, ...fns: Handler[]): Route;
+  put(path: string, ...fns: Handler[]): Route;
+  head(path: string, ...fns: Handler[]): Route;
+  post(path: string, ...fns: Handler[]): Route;
+  patch(path: string, ...fns: Handler[]): Route;
+  delete(path: string, ...fns: Handler[]): Route;
+  options(path: string, ...fns: Handler[]): Route;
+  any(method: string[], path: string, ...fns: Handler[]): Route;
 }

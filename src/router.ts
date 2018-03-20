@@ -1,7 +1,7 @@
 
 import Route from './route'
 import * as assert from 'assert'
-import { Middleware } from './types'
+import { Handler } from './types'
 import * as createDebugger from 'debug'
 
 const debug = createDebugger('aldo:router')
@@ -12,7 +12,7 @@ const debug = createDebugger('aldo:router')
  * @class Router
  */
 export default class Router {
-  private _middlewares: Middleware[] = []
+  private _handlers: Handler[] = []
   private _routes: Route[] = []
 
   public constructor (private _prefix = '') {
@@ -62,15 +62,15 @@ export default class Router {
   }
 
   /**
-   * Use global middlewares
+   * Use global handlers
    * 
    * @param {Function...} fns
    * @returns {Router}
    */
-  public use (...fns: Middleware[]) {
+  public use (...fns: Handler[]) {
     for (let fn of fns) {
-      this._middlewares.push(_ensureFunction(fn))
-      debug(`use route middleware: ${fn.name || '<anonymous>'}`)
+      this._handlers.push(_ensureFunction(fn))
+      debug(`use route handler: ${fn.name || '<anonymous>'}`)
     }
 
     return this
@@ -83,8 +83,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public head (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).head(...this._middlewares.concat(handlers))
+  public head (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).head(...this._handlers.concat(handlers))
   }
 
   /**
@@ -94,8 +94,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public get (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).get(...this._middlewares.concat(handlers))
+  public get (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).get(...this._handlers.concat(handlers))
   }
 
   /**
@@ -105,8 +105,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public post (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).post(...this._middlewares.concat(handlers))
+  public post (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).post(...this._handlers.concat(handlers))
   }
 
   /**
@@ -116,8 +116,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public put (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).put(...this._middlewares.concat(handlers))
+  public put (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).put(...this._handlers.concat(handlers))
   }
 
   /**
@@ -127,8 +127,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public patch (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).patch(...this._middlewares.concat(handlers))
+  public patch (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).patch(...this._handlers.concat(handlers))
   }
 
   /**
@@ -138,8 +138,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public delete (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).delete(...this._middlewares.concat(handlers))
+  public delete (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).delete(...this._handlers.concat(handlers))
   }
 
   /**
@@ -149,8 +149,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public options (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).options(...this._middlewares.concat(handlers));
+  public options (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).options(...this._handlers.concat(handlers));
   }
 
   /**
@@ -160,8 +160,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public all (path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).all(...this._middlewares.concat(handlers))
+  public all (path: string, ...handlers: Handler[]): Route {
+    return this.route(path).all(...this._handlers.concat(handlers))
   }
 
   /**
@@ -172,8 +172,8 @@ export default class Router {
    * @param {Function...} handlers
    * @returns {Route}
    */
-  public any (methods: string[], path: string, ...handlers: Middleware[]): Route {
-    return this.route(path).any(methods, ...this._middlewares.concat(handlers))
+  public any (methods: string[], path: string, ...handlers: Handler[]): Route {
+    return this.route(path).any(methods, ...this._handlers.concat(handlers))
   }
 }
 

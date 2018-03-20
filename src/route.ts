@@ -1,8 +1,8 @@
 
 import { join } from 'path'
 import * as assert from 'assert'
+import { Handler } from './types'
 import * as createDebugger from 'debug'
-import { Middleware, FinalHandler } from './types'
 
 const debug = createDebugger('aldo:route')
 const METHODS = ['HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS']
@@ -11,7 +11,7 @@ const METHODS = ['HEAD', 'GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS']
  * Route container
  */
 export default class Route {
-  private _handlers = new Map<string, Middleware[]>()
+  private _handlers = new Map<string, Handler[]>()
   private _prefix: string
   private _name: string
   private _path: string
@@ -69,7 +69,7 @@ export default class Route {
   /**
    * Get an iterator of the route handlers
    */
-  public handlers (): [string, Middleware[]][] {
+  public handlers (): [string, Handler[]][] {
     return Array.from(this._handlers)
   }
 
@@ -78,7 +78,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public head (...fns: Middleware[]): this {
+  public head (...fns: Handler[]): this {
     return this.any(['HEAD'], ...fns)
   }
 
@@ -87,7 +87,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public get (...fns: Middleware[]): this {
+  public get (...fns: Handler[]): this {
     return this.any(['HEAD', 'GET'], ...fns)
   }
 
@@ -96,7 +96,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public post (...fns: Middleware[]): this {
+  public post (...fns: Handler[]): this {
     return this.any(['POST'], ...fns)
   }
 
@@ -105,7 +105,7 @@ export default class Route {
    * 
    * @param  fns
    */
-  public put (...fns: Middleware[]): this {
+  public put (...fns: Handler[]): this {
     return this.any(['PUT'], ...fns)
   }
 
@@ -114,7 +114,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public patch (...fns: Middleware[]): this {
+  public patch (...fns: Handler[]): this {
     return this.any(['PATCH'], ...fns)
   }
 
@@ -123,7 +123,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public delete (...fns: Middleware[]): this {
+  public delete (...fns: Handler[]): this {
     return this.any(['DELETE'], ...fns)
   }
 
@@ -132,7 +132,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public options (...fns: Middleware[]): this {
+  public options (...fns: Handler[]): this {
     return this.any(['OPTIONS'], ...fns)
   }
 
@@ -143,7 +143,7 @@ export default class Route {
    * 
    * @param fns
    */
-  public all (...fns: Middleware[]): this {
+  public all (...fns: Handler[]): this {
     return this.any(METHODS, ...fns)
   }
 
@@ -155,7 +155,7 @@ export default class Route {
    * @param methods
    * @param fns
    */
-  public any (methods: string[], ...fns: Middleware[]): this {
+  public any (methods: string[], ...fns: Handler[]): this {
     assert(fns.length, 'At least one route handler is required.')
 
     for (let fn of fns) {
@@ -192,13 +192,13 @@ function _normalize (path: string): string {
 }
 
 /**
- * Wrap the last middleware function
+ * Wrap the last handler
  * 
  * @param handlers
  * @private
  */
-function _wrapFinalHandler (handlers: Middleware[]): Middleware[] {
-  let fn = handlers.pop() as FinalHandler
+function _wrapFinalHandler (handlers: Handler[]): Handler[] {
+  let fn = handlers.pop() as Handler
 
   handlers.push(_wrapper(fn))
 
@@ -211,18 +211,12 @@ function _wrapFinalHandler (handlers: Middleware[]): Middleware[] {
  * @param fn
  * @private
  */
-function _wrapper (fn: FinalHandler): Middleware {
-  return async (ctx, next) => {
-    try {
-      var result = await fn(ctx)
+function _wrapper (fn: Handler): Handler {
+  return async (ctx) => {
+    var result = await fn(ctx)
 
-      if (result && !ctx.response.body) {
-        ctx.response.body = result
-      }
-
-      next()
-    } catch (error) {
-      next(error)
+    if (result && !ctx.response.body) {
+      ctx.response.body = result
     }
   }
 }

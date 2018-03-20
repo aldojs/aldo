@@ -1,9 +1,9 @@
 
 import { ListenOptions } from 'net'
 import { setImmediate } from 'timers'
+import * as RadixRouter from 'find-my-way'
 import * as createDebugger from 'debug'
-import * as TreeRouter from 'find-my-way'
-import { Route, Middleware, Context, FinalHandler, Router, Factory } from './types'
+import { Route, Handler, Context, Router } from './types'
 import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
 
 const debug = createDebugger('aldo:application')
@@ -13,51 +13,51 @@ const debug = createDebugger('aldo:application')
  */
 export default class Application {
   private _context: Context = Object.create(null)
-  private _finally: FinalHandler = _respond
-  private _catchers: Middleware[] = []
-  private _posts: Middleware[] = []
-  private _pres: Middleware[] = []
-  private _tree = new TreeRouter()
+  private _finalHandler: Handler = _respond
+  private _catchers: Handler[] = []
+  private _posts: Handler[] = []
+  private _pres: Handler[] = []
   private _routes: Route[] = []
-  private _server: Server
+  private _tree = RadixRouter()
+  private _server?: Server
 
   /**
-   * Add before route middleware
+   * Add before route handler
    * 
    * @param fns
    */
-  public pre (...fns: Middleware[]): this {
+  public pre (...fns: Handler[]): this {
     for (let fn of fns) {
       this._pres.push(_ensureFunction(fn))
-      debug(`use pre middleware: ${fn.name || '<anonymous>'}`)
+      debug(`use pre handler: ${fn.name || '<anonymous>'}`)
     }
 
     return this
   }
 
   /**
-   * Add after route middleware
+   * Add after route handler
    * 
    * @param fns
    */
-  public post (...fns: Middleware[]): this {
+  public post (...fns: Handler[]): this {
     for (let fn of fns) {
       this._posts.push(_ensureFunction(fn))
-      debug(`use post middleware: ${fn.name || '<anonymous>'}`)
+      debug(`use post handler: ${fn.name || '<anonymous>'}`)
     }
 
     return this
   }
 
   /**
-   * Add error middleware
+   * Add error handler
    * 
    * @param fns
    */
-  public catch (...fns: Middleware[]): this {
+  public catch (...fns: Handler[]): this {
     for (let fn of fns) {
       this._catchers.push(_ensureFunction(fn))
-      debug(`use error middleware: ${fn.name || '<anonymous>'}`)
+      debug(`use error handler: ${fn.name || '<anonymous>'}`)
     }
 
     return this
@@ -68,8 +68,8 @@ export default class Application {
    * 
    * @param fn final request handler
    */
-  public finally (fn: FinalHandler): this {
-    this._finally = _ensureFunction(fn)
+  public finally (fn: Handler): this {
+    this._finalHandler = _ensureFunction(fn)
     debug(`use final handler: ${fn.name || '<anonymous>'}`)
     return this
   }
@@ -95,6 +95,7 @@ export default class Application {
     this._compileRoutes()
 
     return (request: Request, response: Response) => {
+      debug(`dispatching: ${request.method} ${request.url}`)
       this.dispatch(this.makeContext(request, response))
     }
   }
@@ -109,14 +110,11 @@ export default class Application {
     var { method, url } = ctx.request
     var found = this._tree.find(method, url)
 
-    debug(`dispatching: ${method} ${url}`)
-
     // 404
     if (!found) {
       let err = _notFoundError(`Route not found for ${method} ${url}`)
 
-      debug(`handler not found: ${method} ${url}`)
-      return this._loopError(err, ctx)
+      return this._loopErrorHandlers(err, ctx)
     }
 
     // add url params to the context
@@ -147,9 +145,7 @@ export default class Application {
 
     // listen
     await this._server.start(arg)
-
     debug(`app started with %o`, arg)
-
     return this._server
   }
 
@@ -157,11 +153,11 @@ export default class Application {
    * Stop listening for requests
    */
   public async stop (): Promise<Server> {
-    await this._server.stop()
+    var server = this._server as Server
 
+    await server.stop()
     debug(`app stopped`)
-
-    return this._server
+    return server
   }
 
   /**
@@ -170,7 +166,7 @@ export default class Application {
    * @param prop
    * @param fn
    */
-  public bind (prop: string, fn: Factory): this {
+  public bind (prop: string, fn: (ctx: Context) => any): this {
     _ensureFunction(fn)
 
     var field = `_${prop}`
@@ -263,15 +259,15 @@ export default class Application {
   }
 
   /**
-   * Compose the middleware list into a callable function
+   * Compose the handler list into a callable function
    * 
    * @param fns middlewares
    * @private
    */
-  private _compose (fns: Middleware[]): FinalHandler {
+  private _compose (fns: Handler[]): Handler {
     var handlers = [...this._pres, ...fns, ...this._posts]
 
-    return (ctx: Context) => this._loopMiddleware(ctx, handlers)
+    return (ctx: Context) => this._loopHandlers(ctx, handlers)
   }
 
   /**
@@ -281,24 +277,30 @@ export default class Application {
    * @param fns
    * @private
    */
-  private _loopMiddleware (ctx: Context, fns: Middleware[]): void {
+  private _loopHandlers (ctx: Context, fns: Handler[]): void {
     var i = 0
 
     var next = (err?: any) => {
-      if (!ctx.error && err) {
-        this._loopError(err, ctx)
-        return
+      if (err != null) {
+        // TODO ensure `err` is an Error instance
+
+        if (ctx.error == null) {
+          this._loopErrorHandlers(err, ctx)
+          return
+        }
+
+        ctx.error = err
       }
 
       var fn = fns[i++]
 
       if (!fn) {
-        fn = this._finally
-        next = undefined as any
+        setImmediate(this._finalHandler, ctx)
+        return
       }
 
       // async call
-      setImmediate(fn, ctx, next)
+      setImmediate(_tryHandler, fn, ctx, next)
     }
 
     next()
@@ -311,13 +313,11 @@ export default class Application {
    * @param ctx
    * @private
    */
-  private _loopError (err: any, ctx: Context) {
-    // TODO ensure `err` is an Error instance
-
+  private _loopErrorHandlers (err: any, ctx: Context) {
     // set the context error
     ctx.error = err
 
-    this._loopMiddleware(ctx, this._catchers)
+    this._loopHandlers(ctx, this._catchers)
   }
 }
 
@@ -357,4 +357,20 @@ function _ensureFunction<T> (arg: T): T {
  */
 function _respond (ctx: Context) {
   ctx.response.send()
+}
+
+/**
+ * 
+ * 
+ * @param fn
+ * @param ctx
+ * @param next
+ */
+async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any) => void) {
+  try {
+    await fn(ctx)
+    next()
+  } catch (error) {
+    next(error)
+  }
 }
