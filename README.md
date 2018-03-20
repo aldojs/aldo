@@ -1,4 +1,6 @@
 
+> This project is under heavy development, and API may change frequently.
+
 `Aldo` is yet another library to build Node.js web applications.
 It uses the best parts of `Koa` and `Express` to provide a fast engine for your web projects.
 
@@ -11,7 +13,6 @@ npm add aldo
 ```bash
 npm test
 ```
-> More tests are comming in the future
 
 ## Hello world!
 ```js
@@ -32,37 +33,35 @@ app.use(router)
 app.start(3000)
 ```
 
-## Application lifecycle
+## Request Flow
 The request handling logic is similar to the `try..catch..finally` JavaScript block.
-In other words, the application will try to call the route middlewares one by one then it calls the final handler.
+In other words, the application will try to call the route handlers one by one then the final handler.
 If an error occurs, it will be handled by the error handlers before reaching the final handler which will terminate and send the response to the client.
 
 You can use `.pre`, `.post`, `.use`, `.catch` and `.finally` methods to control the flow of request handling.
-
-> Since each method controls a processing step, the order doesn't matter any more.
 
 ```js
 const app = new Application()
 
 // 1. The `try` block
 
-// attach one or more global middlewares before the route
+// attach one or more global handlers before the route
 // useful to configure global services like session, cache ...etc
-app.pre(...middlewares)
+app.pre(...handlers)
 
 // use one or many routers with `.use`
 app.use(...routers)
 // ... etc
 
-// attach global middlewares to be executed after the route handlers
+// attach global handlers to be executed after the route handlers
 // like saving a cached version, persisting session data, setting more headers ...etc
-app.post(...middlewares)
+app.post(...handlers)
 
 
 // 2. The `catch` block
 
 // attaching error handlers is done as below
-app.catch(...middlewares)
+app.catch(...handlers)
 
 
 // 3. The `finally` block
@@ -72,15 +71,22 @@ app.catch(...middlewares)
 app.finally(finalHandler)
 ```
 
-Like `Koa`, each `middleware` is a function with 2 arguments, the first argument is a *`context`* object and the second is a *`function`* to call the next middleware in the chain.
+> Since each method controls a processing step, the order doesn't matter any more.
+> We can define routes before or after the final handler, it will create not create any issue, since the routes are only compiled during the application launch.
+
+Unlike the other web frameworks, each `handler` takes only 1 argument: the `context` object which  holds everything you need to handle an HTTP request.
+Each handler may return *void* or a promise for asynchronous functions.
+
+So, when the current handler finished its job, the *context* object is passed automatically to the next handler, and so on, till the final handler which terminates and ends the response.
 
 ```ts
-declare type Middleware = (ctx: Context, next: (err?: any) => void) => void
+// Handler function signature
+declare type Handler = (ctx: Context) => any
 ```
 
 ## Context
-The context object is not a proxy to the request and response properties, it's a simple plain object with only 3 mandatory properties `request`, `response` and `app`.
-Even the error middlewares have the same signature, but with an additonal context property which the `error` value.
+The context object is not a proxy to the request and response properties, it's a simple plain object with only 4 mandatory properties `app`, `request`, `response` and route `params`.
+Even the error handlers have the same signature, but with an additonal `error` property.
 
 ```ts
 declare type Literal = { [x: string]: any }
@@ -96,17 +102,17 @@ declare interface Context extends Literal {
 To extend the request context, and add more properties, you can use `app.set(key, value)` or `app.bind(key, factory)`
 ```js
 // set a global value to be available for all requests
-app.set('mongo', require('./services/database'))
+app.set('mongo', dbConnection)
 
 // set a per request property using a function to lazily get the value
 // This time, each context instance has a distinct `session` property
-app.bind('session', () => new Session())
+app.bind('session', () => new Session(options))
 ```
 
 `app.has(key)` and `app.get(key)` are also available to check the existence of a certain field, or to get a previously defined property.
 
 ## Router
-Each `router` instance control an erea in the application, it acts like a routing namespace.
+Each `router` instance control an erea in the application, it acts like a route namespace.
 You can use as many routers as you need. For example, a router to manage authentication, another for the API, a private router for admin routing, and so on.
 
 > The order of defining routes is not important any more. Thanks to [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
@@ -129,11 +135,6 @@ router
   .delete(Users.delete)
   .post(Users.validate, Users.add)
   .put(Users.validate, Users.modify)
-```
-Note that the last handler of any route implements the `FinalHandler` interface and doesn't have the second parameter `next` like middlewares
-
-```ts
-declare type FinalHandler = (ctx: Context) => any
 ```
 
 ## License
