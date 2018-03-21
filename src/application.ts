@@ -1,8 +1,9 @@
 
 import { ListenOptions } from 'net'
 import { setImmediate } from 'timers'
-import * as RadixRouter from 'find-my-way'
 import * as createDebugger from 'debug'
+import makeCollection from './support/handlers'
+import makeDispatcher from './support/dispatcher'
 import { Route, Handler, Context, Router } from './types'
 import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
 
@@ -12,14 +13,19 @@ const debug = createDebugger('aldo:application')
  * A global facade to manage routes, error handlers, dispatching, etc...
  */
 export default class Application {
-  private _context: Context = Object.create(null)
-  private _finalHandler: Handler = _respond
-  private _catchers: Handler[] = []
-  private _posts: Handler[] = []
-  private _pres: Handler[] = []
-  private _routes: Route[] = []
-  private _tree = RadixRouter()
   private _server?: Server
+  private _routes: Route[] = []
+  private _preHandlers: Handler[] = []
+  private _postHandlers: Handler[] = []
+  private _errorHandlers: Handler[] = []
+  private _finalHandler: Handler = _respond
+  private _context: Context = Object.create(null)
+  private _dispatcher = makeDispatcher(this._errorHandlers)
+  private _handlers = makeCollection((ctx: Context) => {
+    ctx.error = _notFoundError('Not Found')
+
+    this._dispatcher.dispatch(ctx, this._errorHandlers, this._finalHandler)
+  })
 
   /**
    * Add before route handler
@@ -28,7 +34,7 @@ export default class Application {
    */
   public pre (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._pres.push(_ensureFunction(fn))
+      this._preHandlers.push(_ensureFunction(fn))
       debug(`use pre handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -42,7 +48,7 @@ export default class Application {
    */
   public post (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._posts.push(_ensureFunction(fn))
+      this._postHandlers.push(_ensureFunction(fn))
       debug(`use post handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -56,7 +62,7 @@ export default class Application {
    */
   public catch (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._catchers.push(_ensureFunction(fn))
+      this._errorHandlers.push(_ensureFunction(fn))
       debug(`use error handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -96,32 +102,8 @@ export default class Application {
 
     return (request: Request, response: Response) => {
       debug(`dispatching: ${request.method} ${request.url}`)
-      this.dispatch(this.makeContext(request, response))
+      this._handlers.invoke(this.makeContext(request, response))
     }
-  }
-
-  /**
-   * Dispatch the request/response to the matched route handler
-   * 
-   * @param request
-   * @param response
-   */
-  public dispatch (ctx: Context): void {
-    var { method, url } = ctx.request
-    var found = this._tree.find(method, url)
-
-    // 404
-    if (!found) {
-      let err = _notFoundError(`Route not found for ${method} ${url}`)
-
-      return this._loopErrorHandlers(err, ctx)
-    }
-
-    // add url params to the context
-    ctx.params = found.params || {}
-
-    // invoke the route handler
-    found.handler(ctx)
   }
 
   /**
@@ -139,14 +121,14 @@ export default class Application {
    */
   public async start (port: number, options?: CreateServerOptions): Promise<Server>
   public async start (arg: any, options: any = {}) {
-    this._server = createServer(options, this.callback())
+    var server = this._server = createServer(options, this.callback())
 
     if (typeof arg === 'number') arg = { port: arg }
 
     // listen
-    await this._server.start(arg)
+    await server.start(arg)
     debug(`app started with %o`, arg)
-    return this._server
+    return server
   }
 
   /**
@@ -239,14 +221,14 @@ export default class Application {
   }
 
   /**
-   * 
+   * Construct the routes tree
    * 
    * @private
    */
   private _compileRoutes (): void {
     for (let route of this._routes) {
       for (let [method, fns] of route.handlers()) {
-        this._tree.on(method, route.path, this._compose(fns))
+        this._handlers.add(method, route.path, this._compose(fns))
       }
 
       // TODO register named routes
@@ -254,70 +236,18 @@ export default class Application {
 
     // reset the handlers
     this._routes = []
-    this._posts = []
-    this._pres = []
   }
 
   /**
-   * Compose the handler list into a callable function
+   * Compose the given handlers into a callable function
    * 
-   * @param fns middlewares
-   * @private
-   */
-  private _compose (fns: Handler[]): Handler {
-    var handlers = [...this._pres, ...fns, ...this._posts]
-
-    return (ctx: Context) => this._loopHandlers(ctx, handlers)
-  }
-
-  /**
-   * Loop over the route middlewares
-   * 
-   * @param ctx
    * @param fns
    * @private
    */
-  private _loopHandlers (ctx: Context, fns: Handler[]): void {
-    var i = 0
+  private _compose (fns: Handler[]): Handler {
+    var handlers = [...this._preHandlers, ...fns, ...this._postHandlers]
 
-    var next = (err?: any) => {
-      if (err != null) {
-        // TODO ensure `err` is an Error instance
-
-        if (ctx.error == null) {
-          this._loopErrorHandlers(err, ctx)
-          return
-        }
-
-        ctx.error = err
-      }
-
-      var fn = fns[i++]
-
-      if (!fn) {
-        setImmediate(this._finalHandler, ctx)
-        return
-      }
-
-      // async call
-      setImmediate(_tryHandler, fn, ctx, next)
-    }
-
-    next()
-  }
-
-  /**
-   * Loop over the error middlewares
-   * 
-   * @param err
-   * @param ctx
-   * @private
-   */
-  private _loopErrorHandlers (err: any, ctx: Context) {
-    // set the context error
-    ctx.error = err
-
-    this._loopHandlers(ctx, this._catchers)
+    return this._dispatcher.compile(handlers, this._finalHandler)
   }
 }
 
@@ -357,20 +287,4 @@ function _ensureFunction<T> (arg: T): T {
  */
 function _respond (ctx: Context) {
   ctx.response.send()
-}
-
-/**
- * 
- * 
- * @param fn
- * @param ctx
- * @param next
- */
-async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any) => void) {
-  try {
-    await fn(ctx)
-    next()
-  } catch (error) {
-    next(error)
-  }
 }

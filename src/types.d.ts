@@ -9,12 +9,11 @@ declare type Literal = { [x: string]: any; };
 declare type Handler = (ctx: Context) => any;
 
 declare interface Dispatcher {
-  use(...router: Router[]): any;
+  finally(fn: Handler): any;
   pre(...fn: Handler[]): any;
   post(...fn: Handler[]): any;
   catch(...fn: Handler[]): any;
-  finally(fn: Handler): any;
-  dispatch(ctx: Context): any;
+  use(...router: Router[]): any;
 }
 
 declare interface Container {
