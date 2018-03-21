@@ -1,7 +1,7 @@
 
-> This project is under heavy development, and API may change frequently.
+> This project is under heavy development, and the API may change frequently.
 
-`Aldo` is yet another library to build Node.js web applications.
+`Aldo` is yet another framework to build Node.js web applications.
 It uses the best parts of `Koa` and `Express` to provide a fast engine for your web projects.
 
 ## Installation
@@ -35,10 +35,10 @@ app.start(3000)
 
 ## Request Flow
 The request handling logic is similar to the `try..catch..finally` JavaScript block.
-In other words, the application will try to call the route handlers one by one then the final handler.
+In other words, the application will try to call the route handlers one by one to the final handler.
 If an error occurs, it will be handled by the error handlers before reaching the final handler which will terminate and send the response to the client.
 
-You can use `.pre`, `.post`, `.use`, `.catch` and `.finally` methods to control the flow of request handling.
+You can use `.pre`, `.post`, `.use`, `.catch` and `.finally` application's methods to control the flow of request handling.
 
 ```js
 const app = new Application()
@@ -72,10 +72,10 @@ app.finally(finalHandler)
 ```
 
 > Since each method controls a processing step, the order doesn't matter any more.
-> We can define routes before or after the final handler, it will create not create any issue, since the routes are only compiled during the application launch.
+> We can define routes before or after the final handler, it won't create any issue, since the routes are only compiled during the application launch.
 
-Unlike the other web frameworks, each `handler` takes only 1 argument: the `context` object which  holds everything you need to handle an HTTP request.
-Each handler may return *void* or a promise for asynchronous functions.
+Unlike the other web frameworks, each `handler` takes only **one** argument: the **`context`**. This object holds everything you need to handle the incoming HTTP request.
+Handlers may return *void* or a promise for asynchronous functions.
 
 So, when the current handler finished its job, the *context* object is passed automatically to the next handler, and so on, till the final handler which terminates and ends the response.
 
