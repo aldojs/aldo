@@ -1,9 +1,8 @@
 
 import { ListenOptions } from 'net'
 import { setImmediate } from 'timers'
+import Dispatcher from './dispatcher'
 import * as createDebugger from 'debug'
-import makeCollection from './support/handlers'
-import makeDispatcher from './support/dispatcher'
 import { Route, Handler, Context, Router } from './types'
 import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
 
@@ -17,15 +16,8 @@ export default class Application {
   private _routes: Route[] = []
   private _preHandlers: Handler[] = []
   private _postHandlers: Handler[] = []
-  private _errorHandlers: Handler[] = []
-  private _finalHandler: Handler = _respond
+  private _dispatcher = new Dispatcher(_respond)
   private _context: Context = Object.create(null)
-  private _dispatcher = makeDispatcher(this._errorHandlers)
-  private _handlers = makeCollection((ctx: Context) => {
-    ctx.error = _notFoundError('Not Found')
-
-    this._dispatcher.dispatch(ctx, this._errorHandlers, this._finalHandler)
-  })
 
   /**
    * Add before route handler
@@ -56,13 +48,13 @@ export default class Application {
   }
 
   /**
-   * Add error handler
+   * Add an error handler
    * 
    * @param fns
    */
   public catch (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._errorHandlers.push(_ensureFunction(fn))
+      this._dispatcher.onError(_ensureFunction(fn))
       debug(`use error handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -75,13 +67,13 @@ export default class Application {
    * @param fn final request handler
    */
   public finally (fn: Handler): this {
-    this._finalHandler = _ensureFunction(fn)
+    this._dispatcher.onFinished(_ensureFunction(fn))
     debug(`use final handler: ${fn.name || '<anonymous>'}`)
     return this
   }
 
   /**
-   * Add router's routes into the tree
+   * Register router's routes
    * 
    * @param routers
    */
@@ -98,11 +90,11 @@ export default class Application {
    * Return a request handler callback
    */
   public callback (): (request: Request, response: Response) => void {
-    this._compileRoutes()
+    this._registerRoutes()
 
     return (request: Request, response: Response) => {
       debug(`dispatching: ${request.method} ${request.url}`)
-      this._handlers.invoke(this.makeContext(request, response))
+      this._dispatcher.dispatch(this.makeContext(request, response))
     }
   }
 
@@ -215,6 +207,7 @@ export default class Application {
 
     ctx.response = response
     ctx.request = request
+    ctx.params = {}
     ctx.app = this
 
     return ctx
@@ -225,10 +218,12 @@ export default class Application {
    * 
    * @private
    */
-  private _compileRoutes (): void {
+  private _registerRoutes (): void {
     for (let route of this._routes) {
       for (let [method, fns] of route.handlers()) {
-        this._handlers.add(method, route.path, this._compose(fns))
+        fns = [...this._preHandlers, ...fns, ...this._postHandlers]
+
+        this._dispatcher.register(method, route.path, fns)
       }
 
       // TODO register named routes
@@ -237,34 +232,6 @@ export default class Application {
     // reset the handlers
     this._routes = []
   }
-
-  /**
-   * Compose the given handlers into a callable function
-   * 
-   * @param fns
-   * @private
-   */
-  private _compose (fns: Handler[]): Handler {
-    var handlers = [...this._preHandlers, ...fns, ...this._postHandlers]
-
-    return this._dispatcher.compile(handlers, this._finalHandler)
-  }
-}
-
-/**
- * Create a 404 error instance
- * 
- * @param msg
- * @private
- */
-function _notFoundError (msg: string) {
-  var error: any = new Error(msg)
-
-  error.code = 'NOT_FOUND'
-  error.expose = true
-  error.status = 404
-
-  return error
 }
 
 /**

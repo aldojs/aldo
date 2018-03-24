@@ -9,23 +9,24 @@ declare type Literal = { [x: string]: any; };
 declare type Handler = (ctx: Context) => any;
 
 declare interface Dispatcher {
+  onError(fn: Handler): any;
+  dispatch(ctx: Context): void;
+  onFinished(fn: Handler): void;
+  register(method: string | string[], path: string, fns: Handler[]): any;
+}
+
+declare interface Application {
+  get(prop: string): any;
+  stop(): Promise<Server>;
   finally(fn: Handler): any;
+  has(prop: string): boolean;
   pre(...fn: Handler[]): any;
   post(...fn: Handler[]): any;
   catch(...fn: Handler[]): any;
   use(...router: Router[]): any;
-}
-
-declare interface Container {
-  get(prop: string): any;
-  has(prop: string): boolean;
   set(prop: string, value: any): this;
   bind(prop: string, fn: (ctx: Context) => any): this;
   makeContext(request: Request, response: Response): Context;
-}
-
-declare interface Application extends Dispatcher, Container {
-  stop(): Promise<Server>;
   callback(): (request: Request, response: Response) => void;
   start(port: number, ServerOptions?: CreateServerOptions): Promise<Server>;
   start(listenOptions: ListenOptions, ServerOptions?: CreateServerOptions): Promise<Server>;
