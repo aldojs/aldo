@@ -75,9 +75,10 @@ app.finally(finalHandler)
 > We can define routes before or after the final handler, it won't create any issue, since the routes are only compiled during the application launch.
 
 Unlike the other web frameworks, each `handler` takes only **one** argument: the **`context`**. This object holds everything you need to handle the incoming HTTP request.
-Handlers may return *void* or a promise for asynchronous functions.
+Handlers may return *void* or a promise for asynchronous operations.
 
-So, when the current handler finished its job, the *context* object is passed automatically to the next handler, and so on, till the final handler which terminates and ends the response.
+So, when the current handler finished its job, the *context* object is passed automatically to the next handler, and so on, till the final handler which terminates and ends the response. 
+To break the chain, throw an error, to get the first error handler called instead of the next middleware.
 
 ```ts
 // Handler function signature
@@ -99,6 +100,7 @@ declare interface Context extends Literal {
   error?: any;        // The error
 }
 ```
+
 To extend the request context, and add more properties, you can use `app.set(key, value)` or `app.bind(key, factory)`
 ```js
 // set a global value to be available for all requests

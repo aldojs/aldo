@@ -2,6 +2,7 @@
 import { format } from 'util'
 import * as RadixTree from 'find-my-way'
 import { Handler, Context } from './types'
+import { setImmediate as defer } from 'timers'
 
 export default class {
   private _finalHandler: Handler
@@ -97,8 +98,8 @@ export default class {
 
       var fn = fns[i++]
 
-      if (!fn) setImmediate(this._finalHandler, ctx)
-      else setImmediate(_tryHandler, fn, ctx, next)
+      if (!fn) defer(this._finalHandler, ctx)
+      else defer(_tryHandler, fn, ctx, next)
     }
 
     next()
