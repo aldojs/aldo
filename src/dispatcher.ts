@@ -14,7 +14,6 @@ export default class {
    * @param fn
    */
   public constructor (fn: Handler = () => {}) {
-    // TODO ensure the argument is a function
     this._finalHandler = fn
   }
 
@@ -26,7 +25,6 @@ export default class {
    * @param fns
    */
   public register (method: string, path: string, fns: Handler[]): void {
-    // TODO ensure the handlers are functions
     this._tree.on(method, path, (ctx: Context) => this._invoke(ctx, fns))
   }
 
@@ -36,7 +34,7 @@ export default class {
    * @param ctx
    */
   public dispatch (ctx: Context): void {
-    var { method, url } = ctx.request
+    var { method, url } = ctx.req
     var found = this._tree.find(method, url)
 
     if (!found) {
@@ -58,7 +56,6 @@ export default class {
    * @param fn
    */
   public onError (fn: Handler): void {
-    // TODO ensure the argument is a function
     this._errorHandlers.push(fn)
   }
 
@@ -68,7 +65,6 @@ export default class {
    * @param fn
    */
   public onFinished (fn: Handler): void {
-    // TODO ensure the argument is a function
     this._finalHandler = fn
   }
 
@@ -80,7 +76,6 @@ export default class {
    */
   private _invoke (ctx: Context, fns: Handler[]): void {
     var i = 0
-
     var next = (err?: any): void => {
       if (err != null) {
         // ensure `err` is an instance of `Error`
@@ -111,16 +106,16 @@ export default class {
  * 
  * @param fn
  * @param ctx
- * @param done
+ * @param next
  * @private
  */
-async function _tryHandler (fn: Handler, ctx: Context, done: (err?: any) => void) {
+async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any) => void) {
   try {
     await fn(ctx)
-    done()
+    next()
   }
   catch (error) {
-    done(error)
+    next(error)
   }
 }
 

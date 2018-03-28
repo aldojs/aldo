@@ -25,24 +25,23 @@ declare interface Application {
   use(...router: Router[]): any;
   set(prop: string, value: any): this;
   callback(): (req: Request, res: Response) => void;
-  makeContext(req: Request, res: Response): Context;
   bind(prop: string, fn: (ctx: Context) => any): this;
   on(method: string | string[], path: string | string[], ...fns: Handler[]): this;
 }
 
 declare interface Context extends Literal {
   error?: any;
+  req: Request;
+  res: Response;
   params: Literal;
-  request: Request;
-  response: Response;
 }
 
-declare interface Request {
+declare interface Request extends Literal {
   url: string;
   method: string;
 }
 
-declare interface Response {
+declare interface Response extends Literal {
   end(content?: any): void;
 }
 

@@ -1,5 +1,6 @@
 
 import Dispatcher from './dispatcher'
+import ContextFactory from './context'
 import * as createDebugger from 'debug'
 import { createServer, Server } from 'http'
 import { Route, Handler, Context, Router, Request, Response } from './types'
@@ -12,8 +13,8 @@ const debug = createDebugger('aldo:application')
 export default class Application {
   private _pres: Handler[] = []
   private _posts: Handler[] = []
+  private _context = new ContextFactory()
   private _dispatcher = new Dispatcher(_respond)
-  private _context: Context = Object.create(null)
 
   /**
    * Add before route handler
@@ -60,7 +61,7 @@ export default class Application {
   /**
    * Set the final request handler
    * 
-   * @param fn final request handler
+   * @param fn
    */
   public finally (fn: Handler): this {
     this._dispatcher.onFinished(_ensureFunction(fn))
@@ -76,6 +77,8 @@ export default class Application {
    * @param fns
    */
   public on (method: string | string[], path: string | string[], ...fns: Handler[]): this {
+    fns.forEach(_ensureFunction)
+
     if (Array.isArray(path)) {
       for (let _p in path) {
         this._on(method, _p, fns)
@@ -108,10 +111,10 @@ export default class Application {
   /**
    * Return a request handler callback
    */
-  public callback (): (request: Request, response: Response) => void {
-    return (request: Request, response: Response) => {
-      debug(`dispatching: ${request.method} ${request.url}`)
-      this._dispatcher.dispatch(this.makeContext(request, response))
+  public callback (): (req: Request, res: Response) => void {
+    return (req: Request, res: Response) => {
+      debug(`dispatching: ${req.method} ${req.url}`)
+      this._dispatcher.dispatch(this._context.from(req, res))
     }
   }
 
@@ -122,25 +125,7 @@ export default class Application {
    * @param fn
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
-    var field = `_${prop}`
-
-    _ensureFunction(fn)
-
-    Reflect.defineProperty(this._context, prop, {
-      configurable: true,
-      enumerable: true,
-      get () {
-        if ((this as Context)[field] === undefined) {
-          // private property
-          Reflect.defineProperty(this, field, {
-            value: fn(this as Context)
-          })
-        }
-
-        return (this as Context)[field]
-      }
-    })
-
+    this._context.bind(prop, _ensureFunction(fn))
     return this
   }
 
@@ -151,11 +136,7 @@ export default class Application {
    * @param value
    */
   public set (prop: string, value: any): this {
-    if (typeof value === 'function') {
-      return this.bind(prop, value)
-    }
-
-    this._context[prop] = value
+    this._context.set(prop, value)
     return this
   }
 
@@ -165,7 +146,7 @@ export default class Application {
    * @param prop
    */
   public get (prop: string): any {
-    return this._context[prop]
+    return this._context.get(prop)
   }
 
   /**
@@ -174,23 +155,7 @@ export default class Application {
    * @param prop
    */
   public has (prop: string): boolean {
-    return prop in this._context
-  }
-
-  /**
-   * Create a new copy of the context object
-   * 
-   * @param request
-   * @param response
-   */
-  public makeContext (request: Request, response: Response): Context {
-    var ctx: Context = Object.create(this._context)
-
-    ctx.response = response
-    ctx.request = request
-    ctx.params = {}
-
-    return ctx
+    return this._context.has(prop)
   }
 
   /**
@@ -218,11 +183,13 @@ export default class Application {
       return
     }
 
+    var handlers = [...this._pres, ...fns, ...this._posts.reverse()]
+
     // Normalize the method name
     method = method.toUpperCase()
 
     debug(`add handlers for route: ${method} ${path}`)
-    this._dispatcher.register(method, path, [...this._pres, ...fns, ...this._posts])
+    this._dispatcher.register(method, path, handlers)
   }
 }
 
@@ -244,6 +211,6 @@ function _ensureFunction<T> (arg: T): T {
  * @param ctx
  * @private
  */
-function _respond (ctx: Context) {
-  ctx.response.end()
+function _respond ({ res }: Context) {
+  res.end()
 }
