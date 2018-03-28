@@ -1,10 +1,8 @@
 
-import { ListenOptions } from 'net'
-import { setImmediate } from 'timers'
 import Dispatcher from './dispatcher'
 import * as createDebugger from 'debug'
-import { Route, Handler, Context, Router } from './types'
-import { Request, Response, Server, createServer, CreateServerOptions } from 'aldo-http'
+import { createServer, Server } from 'http'
+import { Route, Handler, Context, Router, Request, Response } from './types'
 
 const debug = createDebugger('aldo:application')
 
@@ -12,10 +10,8 @@ const debug = createDebugger('aldo:application')
  * A global facade to manage routes, error handlers, dispatching, etc...
  */
 export default class Application {
-  private _server?: Server
-  private _routes: Route[] = []
-  private _preHandlers: Handler[] = []
-  private _postHandlers: Handler[] = []
+  private _pres: Handler[] = []
+  private _posts: Handler[] = []
   private _dispatcher = new Dispatcher(_respond)
   private _context: Context = Object.create(null)
 
@@ -26,7 +22,7 @@ export default class Application {
    */
   public pre (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._preHandlers.push(_ensureFunction(fn))
+      this._pres.push(_ensureFunction(fn))
       debug(`use pre handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -40,7 +36,7 @@ export default class Application {
    */
   public post (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._postHandlers.push(_ensureFunction(fn))
+      this._posts.push(_ensureFunction(fn))
       debug(`use post handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -73,14 +69,37 @@ export default class Application {
   }
 
   /**
+   * Register a route handlers
+   * 
+   * @param method
+   * @param path
+   * @param fns
+   */
+  public on (method: string | string[], path: string | string[], ...fns: Handler[]): this {
+    if (Array.isArray(path)) {
+      for (let _p in path) {
+        this._on(method, _p, fns)
+      }
+
+      return this
+    }
+
+    this._on(method, path, fns)
+    return this
+  }
+
+  /**
    * Register router's routes
    * 
    * @param routers
    */
   public use (...routers: Router[]): this {
     for (let router of routers) {
-      this._routes.push(...router.routes())
-      debug('use routes')
+      for (let route of router.routes()) {
+        for (let [method, fns] of route.handlers()) {
+          this._on(method, route.path, fns)
+        }
+      }
     }
 
     return this
@@ -90,48 +109,10 @@ export default class Application {
    * Return a request handler callback
    */
   public callback (): (request: Request, response: Response) => void {
-    this._registerRoutes()
-
     return (request: Request, response: Response) => {
       debug(`dispatching: ${request.method} ${request.url}`)
       this._dispatcher.dispatch(this.makeContext(request, response))
     }
-  }
-
-  /**
-   * Start listening for requests
-   * 
-   * @param listenOptions
-   * @param serverOptions
-   */
-  public async start (listenOptions: ListenOptions, serverOptions?: CreateServerOptions): Promise<Server>
-  /**
-   * Start listening for requests
-   * 
-   * @param port
-   * @param options
-   */
-  public async start (port: number, options?: CreateServerOptions): Promise<Server>
-  public async start (arg: any, options: any = {}) {
-    var server = this._server = createServer(options, this.callback())
-
-    if (typeof arg === 'number') arg = { port: arg }
-
-    // listen
-    await server.start(arg)
-    debug(`app started with %o`, arg)
-    return server
-  }
-
-  /**
-   * Stop listening for requests
-   */
-  public async stop (): Promise<Server> {
-    var server = this._server as Server
-
-    await server.stop()
-    debug(`app stopped`)
-    return server
   }
 
   /**
@@ -141,9 +122,9 @@ export default class Application {
    * @param fn
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
-    _ensureFunction(fn)
-
     var field = `_${prop}`
+
+    _ensureFunction(fn)
 
     Reflect.defineProperty(this._context, prop, {
       configurable: true,
@@ -208,29 +189,40 @@ export default class Application {
     ctx.response = response
     ctx.request = request
     ctx.params = {}
-    ctx.app = this
 
     return ctx
   }
 
   /**
-   * Construct the routes tree
+   * Shorthand for:
    * 
+   *     http.createServer(app.callback()).listen(...args)
+   */
+  public listen (): Server {
+    return createServer(this.callback() as any).listen(...arguments)
+  }
+
+  /**
+   * 
+   * 
+   * @param method
+   * @param path
+   * @param fns
    * @private
    */
-  private _registerRoutes (): void {
-    for (let route of this._routes) {
-      for (let [method, fns] of route.handlers()) {
-        fns = [...this._preHandlers, ...fns, ...this._postHandlers]
+  private _on (method: string | string[], path: string, fns: Handler[]) {
+    if (Array.isArray(method)) {
+      for (let _m of method)
+        this._on(_m, path, fns)
 
-        this._dispatcher.register(method, route.path, fns)
-      }
-
-      // TODO register named routes
+      return
     }
 
-    // reset the handlers
-    this._routes = []
+    // Normalize the method name
+    method = method.toUpperCase()
+
+    debug(`add handlers for route: ${method} ${path}`)
+    this._dispatcher.register(method, path, [...this._pres, ...fns, ...this._posts])
   }
 }
 
@@ -253,5 +245,5 @@ function _ensureFunction<T> (arg: T): T {
  * @private
  */
 function _respond (ctx: Context) {
-  ctx.response.send()
+  ctx.response.end()
 }

@@ -162,9 +162,6 @@ export default class Route {
       assert(typeof fn === 'function', 'Route handler must be a function.')
     }
 
-    // wrap the final handler
-    fns = _wrapFinalHandler(fns)
-
     for (let method of methods) {
       assert(!this._handlers.has(method), `Method '${method}' already defined for "${this.path}"`)
       assert(METHODS.includes(method.toUpperCase()), `Method '${method}' not accepted.`)
@@ -189,34 +186,4 @@ function _normalize (path: string): string {
   if (!path.startsWith('/')) path = '/' + path
 
   return path
-}
-
-/**
- * Wrap the last handler
- * 
- * @param handlers
- * @private
- */
-function _wrapFinalHandler (handlers: Handler[]): Handler[] {
-  let fn = handlers.pop() as Handler
-
-  handlers.push(_wrapper(fn))
-
-  return handlers
-}
-
-/**
- * Get the final handler wrapper
- * 
- * @param fn
- * @private
- */
-function _wrapper (fn: Handler): Handler {
-  return async (ctx) => {
-    var result = await fn(ctx)
-
-    if (result && !ctx.response.body) {
-      ctx.response.body = result
-    }
-  }
 }

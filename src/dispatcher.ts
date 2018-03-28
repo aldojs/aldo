@@ -25,7 +25,7 @@ export default class {
    * @param path
    * @param fns
    */
-  public register (method: string | string[], path: string, fns: Handler[]): void {
+  public register (method: string, path: string, fns: Handler[]): void {
     // TODO ensure the handlers are functions
     this._tree.on(method, path, (ctx: Context) => this._invoke(ctx, fns))
   }
@@ -40,13 +40,13 @@ export default class {
     var found = this._tree.find(method, url)
 
     if (!found) {
-      ctx.error = _notFoundError('Route not found for ${method} ${url}')
+      ctx.error = _notFoundError(`Route not found for ${method} ${url}`)
 
       return this._invoke(ctx, this._errorHandlers)
     }
 
     // add url params to the context
-    if (found.params) ctx.params = found.params
+    ctx.params = found.params || {}
 
     // invoke the route handler
     found.handler(ctx)
