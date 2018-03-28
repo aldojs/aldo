@@ -79,6 +79,9 @@ export default class Application {
   public on (method: string | string[], path: string | string[], ...fns: Handler[]): this {
     fns.forEach(_ensureFunction)
 
+    // combine handlers
+    fns = this._combine(fns)
+
     if (Array.isArray(path)) {
       for (let _p in path) {
         this._on(method, _p, fns)
@@ -100,7 +103,7 @@ export default class Application {
     for (let router of routers) {
       for (let route of router.routes()) {
         for (let [method, fns] of route.handlers()) {
-          this._on(method, route.path, fns)
+          this.on(method, route.path, ...fns)
         }
       }
     }
@@ -183,13 +186,20 @@ export default class Application {
       return
     }
 
-    var handlers = [...this._pres, ...fns, ...this._posts.reverse()]
-
     // Normalize the method name
     method = method.toUpperCase()
 
     debug(`add handlers for route: ${method} ${path}`)
-    this._dispatcher.register(method, path, handlers)
+    this._dispatcher.register(method, path, fns)
+  }
+
+  /**
+   * Combine global and route handlers
+   * 
+   * @param fns
+   */
+  private _combine (fns: Handler[]): Handler[] {
+    return [...this._pres, ...fns, ...this._posts.reverse()]
   }
 }
 
