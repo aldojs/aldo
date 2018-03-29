@@ -76,7 +76,13 @@ export default class {
    */
   private _invoke (ctx: Context, fns: Handler[]): void {
     var i = 0
-    var next = (err?: any): void => {
+
+    var next = (err?: any, stop = false): void => {
+      if (stop) {
+        defer(this._finalHandler, ctx)
+        return
+      }
+
       if (err != null) {
         // ensure `err` is an instance of `Error`
         if (!(err instanceof Error)) {
@@ -97,6 +103,7 @@ export default class {
       else defer(_tryHandler, fn, ctx, next)
     }
 
+    // start dispatching
     next()
   }
 }
@@ -109,10 +116,11 @@ export default class {
  * @param next
  * @private
  */
-async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any) => void) {
+async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any, stop?: boolean) => void) {
   try {
-    await fn(ctx)
-    next()
+    var callNext: any = await fn(ctx)
+
+    callNext === false ? next(null, true) : next()
   }
   catch (error) {
     next(error)
