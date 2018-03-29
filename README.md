@@ -1,8 +1,8 @@
 
-> This project is under heavy development, and the API may change frequently.
+> This project is under heavy development, and the API is unstable and may change frequently.
 
-`Aldo` is yet another framework to build Node.js web applications.
-It uses the best parts of `Koa` and `Express` to provide a fast engine for your web projects.
+`Aldo` is yet another framework to build web applications for Node.js 8+.
+It uses the best parts of other web frameworks to provide a fast engine for your projects.
 
 ## Installation
 ```bash
@@ -16,108 +16,150 @@ npm test
 
 ## Hello world!
 ```js
-// import the needed parts
-const { Application, Router } = require('aldo')
+// dependencies
+const { Application } = require('aldo')
 
-const router = new Router()
 const app = new Application()
 
-// we define a `hello world` route
-router.get('/', () => 'Hello world!')
+// define a `hello world` route
+app.on('GET', '/', ({ res }) => {
+  res.setHeader('Content-Type', 'text/plain')
+  res.end('Hello world!')
+})
 
-// we add the router to be used by our application
-app.use(router)
-
-// we serve the application,
-// which creates and uses an internal HTTP server
-app.start(3000)
+// create a HTTP server to serve the application
+app.listen(3000)
 ```
 
 ## Request Flow
+---
 The request handling logic is similar to the `try..catch..finally` JavaScript block.
-In other words, the application will try to call the route handlers one by one to the final handler.
+In other words, the application will try to call the handlers one by one till the final handler.
 If an error occurs, it will be handled by the error handlers before reaching the final handler which will terminate and send the response to the client.
 
-You can use `.pre`, `.post`, `.use`, `.catch` and `.finally` application's methods to control the flow of request handling.
+> TODO use a flow chart to demonstrate the process
 
+### &#10145; The ***try*** block
+The dispatcher will try to dispatch the [*context*](#context) object to the route handlers one by one till the last one in stack.
+
+### &#10145; The ***catch*** block
+If an error is thrown during the *try* block, the [*context*](#context) object will be augmented with the `error` object, and dispatched to the error handlers to process it.
+
+### &#10145; The ***finally*** block
+This block contain only a single handler, and will be invoked, as a last processing step, to terminate the request and send the response to the client.
+
+## Handlers
+---
+Unlike the other web frameworks, each `handler` takes only **one** argument: the [*context*](#context), which is a literal object that holds everything you need to handle the incoming HTTP request.
+
+When the current handler finished its job, the context object is passed automatically to the next handler, and so on, until the final handler which terminates and ends the response.
+To break the chain, just return `false` or `Promise<false>`, to get the final handler called instead of the next middleware.
+
+```ts
+// Handler function signature
+declare type Handler = (ctx: Context) => any;
+```
+
+### Route handlers
+To define route handlers, you may use `.on(method, path, ...fns)` or `.use(...routers)`
 ```js
 const app = new Application()
 
-// 1. The `try` block
+// define handlers for a specific "METHOD URL"
+app.on(method, path, ...handlers)
 
+// use routes defined within a router
+app.use(...routers)
+```
+
+> The order of defining routes is not important any more. Thanks to [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
+
+It's possible to add `before route` or `after route` handlers with `.pre(...fns)` and `.post(...fns)`
+
+```js
 // attach one or more global handlers before the route
 // useful to configure global services like session, cache ...etc
 app.pre(...handlers)
 
-// use one or many routers with `.use`
-app.use(...routers)
-// ... etc
-
 // attach global handlers to be executed after the route handlers
 // like saving a cached version, persisting session data, setting more headers ...etc
 app.post(...handlers)
-
-
-// 2. The `catch` block
-
-// attaching error handlers is done as below
-app.catch(...handlers)
-
-
-// 3. The `finally` block
-
-// at last, only one final handler is used
-// the default one is simply sending the response
-app.finally(finalHandler)
 ```
 
-> Since each method controls a processing step, the order doesn't matter any more.
-> We can define routes before or after the final handler, it won't create any issue, since the routes are only compiled during the application launch.
+> It's important to note, that the route handlers are directly compiled at the moment of the registeration with `.on` or `.use`. So, any post handler added after the route will not be invoked.
 
-Unlike the other web frameworks, each `handler` takes only **one** argument: the **`context`**. This object holds everything you need to handle the incoming HTTP request.
-Handlers may return *void* or a promise for asynchronous operations.
+> Note also, that the `post` handlers are exceptionally invoked in **reverse order** (<abbr title="Last In First Out">LIFO</abbr>) unlike the others.
 
-So, when the current handler finished its job, the *context* object is passed automatically to the next handler, and so on, till the final handler which terminates and ends the response. 
-To break the chain, throw an error, to get the first error handler called instead of the next middleware.
+### Error handlers
+You may attach error handlers as many as needed with `.catch(...fns)`.
+Each error thrown is attached to the context object and passed to each handler one by one, unless you return a `false` which forces the dispatcher to omit the following and invoke only the final handler.
 
-```ts
-// Handler function signature
-declare type Handler = (ctx: Context) => any
+```js
+app.catch(...handlers)
+```
+
+### Final handler
+The default final handler ends the response stream.
+If you want to change that behavior, simply set a custom handler with `.finally(fn)`.
+
+```js
+app.finally(customHandler)
 ```
 
 ## Context
-The context object is not a proxy to the request and response properties, it's a simple plain object with only 4 mandatory properties `app`, `request`, `response` and route `params`.
+---
+The context object is not a proxy to the request and response properties, it's a simple plain object with only 3 mandatory properties: `req`, `res` and the route `params`.
 Even the error handlers have the same signature, but with an additonal `error` property.
 
 ```ts
-declare type Literal = { [x: string]: any }
+declare type Literal = { [x: string]: any; };
 
 declare interface Context extends Literal {
-  response: Response; // Response object provided by the package `aldo-http`
-  request: Request;   // Request object provided by the package `aldo-http`
-  app: Application;   // Application instance
-  params: Literal;    // Route parameters
-  error?: any;        // The error
+  error?: any;      // The error
+  req: Request;     // IncomingMessage object
+  res: Response;    // ServerResponse object
+  params: Literal;  // Route parameters
+}
+
+declare interface Request extends Literal {
+  url: string;
+  method: string;
+}
+
+declare interface Response extends Literal {
+  end(): void;
 }
 ```
 
-To extend the request context, and add more properties, you can use `app.set(key, value)` or `app.bind(key, factory)`
+### `.set(key, value)`
+To extend the request context, and add shared properties, like a DB connection, a global logger, you may use `.set()`
 ```js
-// set a global value to be available for all requests
-app.set('mongo', dbConnection)
+const mongoose = require('mongoose')
 
-// set a per request property using a function to lazily get the value
-// This time, each context instance has a distinct `session` property
+await mongoose.connect('mongodb://localhost/test')
+
+app.set('mongoose', mongoose)
+```
+
+### `.bind(key, fn)`
+To set a per request private properties, you may use `.bind()`. This method takes a field name, and a function to be used as a `lazy` getter of the field value.
+
+```js
 app.bind('session', () => new Session(options))
 ```
 
-`app.has(key)` and `app.get(key)` are also available to check the existence of a certain field, or to get a previously defined property.
+This method is very useful, since it allows you to lazily (only when needed) attach a per request property into the context without adding a pre handler.
+
+### `.has(key)`
+You may use it to check the existence of a certain field
+
+### `.get(key)`
+You may use it to get a previously defined field value.
 
 ## Router
-Each `router` instance control an erea in the application, it acts like a route namespace.
+---
+Each `router` instance control an erea in the application, it acts like a namespace more than a router.
 You can use as many routers as you need. For example, a router to manage authentication, another for the API, a private router for admin routing, and so on.
-
-> The order of defining routes is not important any more. Thanks to [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
 
 ```js
 const { Router } = require('aldo')
