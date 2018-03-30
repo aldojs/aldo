@@ -4,6 +4,8 @@ import * as RadixTree from 'find-my-way'
 import { Handler, Context } from './types'
 import { setImmediate as defer } from 'timers'
 
+type NextFunction = (err?: any, stop?: boolean) => void
+
 export default class {
   private _finalHandler: Handler
   private _tree = new RadixTree()
@@ -35,7 +37,7 @@ export default class {
    */
   public dispatch (ctx: Context): void {
     var { method, url } = ctx.req
-    var found = this._tree.find(method, url)
+    var found = this._tree.find(method, _sanitize(url))
 
     if (!found) {
       ctx.error = _notFoundError(`Route not found for ${method} ${url}`)
@@ -77,7 +79,7 @@ export default class {
   private _invoke (ctx: Context, fns: Handler[]): void {
     var i = 0
 
-    var next = (err?: any, stop = false): void => {
+    var next: NextFunction = (err?: any, stop = false): void => {
       if (stop) {
         defer(this._finalHandler, ctx)
         return
@@ -116,7 +118,7 @@ export default class {
  * @param next
  * @private
  */
-async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any, stop?: boolean) => void) {
+async function _tryHandler (fn: Handler, ctx: Context, next: NextFunction) {
   try {
     var callNext: any = await fn(ctx)
 
@@ -141,4 +143,23 @@ function _notFoundError (message: string): Error {
   error.expose = true
 
   return error
+}
+
+/**
+ * Returns only the pathname
+ * 
+ * @param url
+ * @private
+ */
+function _sanitize (url: string): string {
+  for (var i = 0; i < url.length; i++) {
+    var charCode = url.charCodeAt(i)
+
+    //              "?"                "#"
+    if (charCode === 63 || charCode === 35) {
+      return url.slice(0, i)
+    }
+  }
+
+  return url
 }
