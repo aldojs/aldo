@@ -15,31 +15,22 @@ declare interface Dispatcher {
 }
 
 declare interface Application {
-  listen(): Server;
   get(prop: string): any;
   finally(fn: Handler): any;
   has(prop: string): boolean;
   pre(...fn: Handler[]): any;
   post(...fn: Handler[]): any;
   catch(...fn: Handler[]): any;
+  listen(...args: any[]): Server;
   set(prop: string, value: any): this;
-  callback(): (req: Request, res: Response) => void;
   bind(prop: string, fn: (ctx: Context) => any): this;
   on(method: string | string[], path: string | string[], ...fns: Handler[]): this;
+  callback(): (req: { url: string; method: string; }, res: { end(): void; }) => void;
 }
 
 declare interface Context extends Literal {
+  req: any;
+  res: any;
   error?: any;
-  req: Request;
-  res: Response;
-  params: Literal;
-}
-
-declare interface Request extends Literal {
-  url: string;
-  method: string;
-}
-
-declare interface Response extends Literal {
-  end(body?: any): void;
+  params: { [x: string]: string; };
 }

@@ -2,8 +2,8 @@
 import Dispatcher from './dispatcher'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
+import { Handler, Context } from './types'
 import { createServer, Server } from 'http'
-import { Handler, Context, Request, Response } from './types'
 
 const debug = createDebugger('aldo:application')
 
@@ -94,8 +94,8 @@ export default class Application {
   /**
    * Return a request handler callback
    */
-  public callback (): (req: Request, res: Response) => void {
-    return (req: Request, res: Response) => {
+  public callback (): (req: { url: string; method: string; }, res: { end(): void; }) => void {
+    return (req, res) => {
       debug(`dispatching: ${req.method} ${req.url}`)
       this._dispatcher.dispatch(this._context.from(req, res))
     }

@@ -1,5 +1,5 @@
 
-import { Context, Request, Response } from './types'
+import { Context } from './types'
 
 export default class {
   private _store: Context = Object.create(null)
@@ -68,8 +68,8 @@ export default class {
    * @param req
    * @param res
    */
-  public from (req: Request, res: Response): Context {
-    var ctx: Context = Object.create(this._store)
+  public from (req: any, res: any): Context {
+    var ctx = Object.create(this._store)
 
     ctx.res = res
     ctx.req = req

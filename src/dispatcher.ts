@@ -4,7 +4,7 @@ import * as RadixTree from 'find-my-way'
 import { Handler, Context } from './types'
 import { setImmediate as defer } from 'timers'
 
-type NextFunction = (err?: any, stop?: boolean) => void
+type NextFunction = (err?: any, finish?: boolean) => void
 
 export default class {
   private _finalHandler: Handler
@@ -27,11 +27,11 @@ export default class {
    * @param fns
    */
   public register (method: string, path: string, fns: Handler[]): void {
-    this._tree.on(method, path, (ctx: Context) => this._invoke(ctx, fns))
+    this._tree.on(method, path, (ctx: Context) => this._dispatch(ctx, fns))
   }
 
   /**
-   * Search and invoke the matched context handler
+   * Search and invoke the matched route handler
    * 
    * @param ctx
    */
@@ -42,7 +42,7 @@ export default class {
     if (!found) {
       ctx.error = _notFoundError(`Route not found for ${method} ${url}`)
 
-      return this._invoke(ctx, this._errorHandlers)
+      return this._dispatch(ctx, this._errorHandlers)
     }
 
     // add url params to the context
@@ -76,11 +76,11 @@ export default class {
    * @param ctx
    * @param fns
    */
-  private _invoke (ctx: Context, fns: Handler[]): void {
+  private _dispatch (ctx: Context, fns: Handler[]): void {
     var i = 0
 
-    var next: NextFunction = (err?: any, stop = false): void => {
-      if (stop) {
+    var next: NextFunction = (err?: any, finish = false): void => {
+      if (finish === true) {
         defer(this._finalHandler, ctx)
         return
       }
@@ -88,7 +88,7 @@ export default class {
       if (err != null) {
         // ensure `err` is an instance of `Error`
         if (!(err instanceof Error)) {
-          err = new Error(format('non-error thrown: %j', err))
+          err = new TypeError(format('non-error thrown: %j', err))
         }
 
         if (ctx.error == null) {
