@@ -61,15 +61,12 @@ declare type Handler = (ctx: Context) => any;
 ```
 
 ### Route handlers
-To define route handlers, you may use `.on(method, path, ...fns)` or `.use(...routers)`
+To define route handlers, you may use `.on(method, path, ...fns)`
 ```js
 const app = new Application()
 
 // define handlers for a specific "METHOD URL"
 app.on(method, path, ...handlers)
-
-// use routes defined within a router
-app.use(...routers)
 ```
 
 > The order of defining routes is not important any more. Thanks to [find-my-way](https://npmjs.com/find-my-way) witch is a [radix tree](https://en.wikipedia.org/wiki/Radix_tree).
@@ -86,7 +83,7 @@ app.pre(...handlers)
 app.post(...handlers)
 ```
 
-> It's important to note, that the route handlers are directly compiled at the moment of the registeration with `.on` or `.use`. So, any post handler added after the route will not be invoked.
+> It's important to note, that the route handlers are directly compiled at the moment of the registeration with `.on`. So, any post handler added after the route will not be invoked.
 
 > Note also, that the `post` handlers are exceptionally invoked in **reverse order** (<abbr title="Last In First Out">LIFO</abbr>) unlike the others.
 

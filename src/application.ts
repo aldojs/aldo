@@ -3,7 +3,7 @@ import Dispatcher from './dispatcher'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
 import { createServer, Server } from 'http'
-import { Route, Handler, Context, Router, Request, Response } from './types'
+import { Handler, Context, Request, Response } from './types'
 
 const debug = createDebugger('aldo:application')
 
@@ -82,30 +82,10 @@ export default class Application {
     // combine handlers
     fns = this._combine(fns)
 
-    if (Array.isArray(path)) {
-      for (let _p in path) {
-        this._on(method, _p, fns)
-      }
+    if (typeof path === 'string') path = [path]
 
-      return this
-    }
-
-    this._on(method, path, fns)
-    return this
-  }
-
-  /**
-   * Register router's routes
-   * 
-   * @param routers
-   */
-  public use (...routers: Router[]): this {
-    for (let router of routers) {
-      for (let route of router.routes()) {
-        for (let [method, fns] of route.handlers()) {
-          this.on(method, route.path, ...fns)
-        }
-      }
+    for (let _path in path) {
+      this._on(method, _path, fns)
     }
 
     return this
@@ -189,8 +169,9 @@ export default class Application {
     // Normalize the method name
     method = method.toUpperCase()
 
-    debug(`add handlers for route: ${method} ${path}`)
     this._dispatcher.register(method, path, fns)
+
+    debug(`add handlers for route: ${method} ${path}`)
   }
 
   /**
