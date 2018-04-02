@@ -1,9 +1,12 @@
 
-import Dispatcher from './dispatcher'
+import { format } from 'util'
+import { setImmediate } from 'timers'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
+import * as RadixTree from 'find-my-way'
 import { Handler, Context } from './types'
 import { createServer, Server } from 'http'
+import { dispatch, compose } from './handlers'
 
 const debug = createDebugger('aldo:application')
 
@@ -11,19 +14,21 @@ const debug = createDebugger('aldo:application')
  * A global facade to manage routes, error handlers, dispatching, etc...
  */
 export default class Application {
-  private _pres: Handler[] = []
-  private _posts: Handler[] = []
+  private _tree = new RadixTree()
+  private _presHandlers: Handler[] = []
+  private _postsHandlers: Handler[] = []
+  private _errorHandlers: Handler[] = []
   private _context = new ContextFactory()
-  private _dispatcher = new Dispatcher(_respond)
+  private _finalHandler: Handler = _respond
 
   /**
-   * Add before route handler
+   * Add a pre route handler
    * 
    * @param fns
    */
   public pre (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._pres.push(_ensureFunction(fn))
+      this._presHandlers.push(_ensureFunction(fn))
       debug(`use pre handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -31,13 +36,13 @@ export default class Application {
   }
 
   /**
-   * Add after route handler
+   * Add a post route handler
    * 
    * @param fns
    */
   public post (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._posts.push(_ensureFunction(fn))
+      this._postsHandlers.push(_ensureFunction(fn))
       debug(`use post handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -51,7 +56,7 @@ export default class Application {
    */
   public catch (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._dispatcher.onError(_ensureFunction(fn))
+      this._errorHandlers.push(_ensureFunction(fn))
       debug(`use error handler: ${fn.name || '<anonymous>'}`)
     }
 
@@ -64,7 +69,7 @@ export default class Application {
    * @param fn
    */
   public finally (fn: Handler): this {
-    this._dispatcher.onFinished(_ensureFunction(fn))
+    this._finalHandler = _ensureFunction(fn)
     debug(`use final handler: ${fn.name || '<anonymous>'}`)
     return this
   }
@@ -79,12 +84,9 @@ export default class Application {
   public on (method: string | string[], path: string | string[], ...fns: Handler[]): this {
     fns.forEach(_ensureFunction)
 
-    // combine handlers
-    fns = this._combine(fns)
-
     if (typeof path === 'string') path = [path]
 
-    for (let _path in path) {
+    for (let _path of path) {
       this._on(method, _path, fns)
     }
 
@@ -94,10 +96,36 @@ export default class Application {
   /**
    * Return a request handler callback
    */
-  public callback (): (req: { url: string; method: string; }, res: { end(): void; }) => void {
-    return (req, res) => {
+  public callback (): (req: { url: string; method: string; }, res: { end(): void; }) => any {
+    // ensure the app has an error handler
+    if (this._errorHandlers.length === 0) {
+      throw new Error(`An error handler is required.`)
+    }
+
+    // compose handlers
+    var handle = compose(this._combineHandlers())
+    var handleError = compose(this._errorHandlers)
+
+    // export
+    return async (req, res) => {
+      var ctx = this._context.from(req, res)
+
       debug(`dispatching: ${req.method} ${req.url}`)
-      this._dispatcher.dispatch(this._context.from(req, res))
+
+      try {
+        await handle(ctx)
+      } catch (err) {
+        // ensure `err` is an instance of `Error`
+        if (!(err instanceof Error)) {
+          err = new TypeError(format('non-error thrown: %j', err))
+        }
+
+        ctx.error = err
+
+        await handleError(ctx)
+      } finally {
+        await this._finalHandler(ctx)
+      }
     }
   }
 
@@ -169,7 +197,7 @@ export default class Application {
     // Normalize the method name
     method = method.toUpperCase()
 
-    this._dispatcher.register(method, path, fns)
+    this._tree.on(method, path, compose(fns))
 
     debug(`add handlers for route: ${method} ${path}`)
   }
@@ -178,9 +206,35 @@ export default class Application {
    * Combine global and route handlers
    * 
    * @param fns
+   * @private
    */
-  private _combine (fns: Handler[]): Handler[] {
-    return [...this._pres, ...fns, ...this._posts.reverse()]
+  private _combineHandlers (): Handler[] {
+    return [
+      ...this._presHandlers,
+      this._dispatchRoute.bind(this),
+      ...this._postsHandlers.reverse()
+    ]
+  }
+
+  /**
+   * Search and invoke the matched route handlers
+   * 
+   * @param ctx
+   * @private
+   */
+  private _dispatchRoute (ctx: Context): any {
+    var { method, url } = ctx.req
+    var found = this._tree.find(method, _sanitize(url))
+
+    if (!found) {
+      throw new Error(`Route not found: ${method} ${url}`)
+    }
+
+    // add url params to the context
+    ctx.params = found.params || {}
+
+    // invoke the route handler
+    return found.handler(ctx)
   }
 }
 
@@ -204,4 +258,23 @@ function _ensureFunction<T> (arg: T): T {
  */
 function _respond ({ res }: Context) {
   res.end()
+}
+
+/**
+ * Returns only the pathname
+ * 
+ * @param url
+ * @private
+ */
+function _sanitize (url: string): string {
+  for (var i = 0; i < url.length; i++) {
+    var charCode = url.charCodeAt(i)
+
+    //              "?"                "#"
+    if (charCode === 63 || charCode === 35) {
+      return url.slice(0, i)
+    }
+  }
+
+  return url
 }
