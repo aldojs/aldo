@@ -1,7 +1,7 @@
 
 /// <reference types="node" />
 
-import { Server } from 'http'
+import { Server, IncomingMessage, ServerResponse } from 'http'
 
 declare type Literal = { [x: string]: any; };
 
@@ -29,8 +29,8 @@ declare interface Application {
 }
 
 declare interface Context extends Literal {
-  req: any;
-  res: any;
   error?: any;
+  res: ServerResponse;
+  req: IncomingMessage;
   params: { [x: string]: string; };
 }

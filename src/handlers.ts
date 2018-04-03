@@ -1,7 +1,7 @@
 
 import { format } from 'util'
+import { setImmediate } from 'timers'
 import { Context, Handler } from './types'
-import { setImmediate as defer } from 'timers'
 
 /**
  * Invoke the context handlers one by one
@@ -16,7 +16,7 @@ export function dispatch (ctx: Context, fns: Handler[]): Promise<any> {
     next()
 
     function next (err?: any, finish = false): void {
-      if (finish) return resolve(true)
+      if (finish) return resolve(false)
 
       if (err != null) {
         // ensure `err` is an instance of `Error`
@@ -33,7 +33,7 @@ export function dispatch (ctx: Context, fns: Handler[]): Promise<any> {
 
       if (!fn) return resolve()
 
-      defer(_tryHandler, fn, ctx, next)
+      setImmediate(_tryHandler, fn, ctx, next)
     }
   })
 }
@@ -43,10 +43,10 @@ export function dispatch (ctx: Context, fns: Handler[]): Promise<any> {
  * 
  * @param fns
  */
-export function compose (fns: Handler[]): Handler {
-  return fns.length === 1 ? fns[0] : (ctx) => dispatch(ctx, fns)
+export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
+  return (ctx) => dispatch(ctx, fns)
 }
- 
+
 /**
  * Try the current handler then call the next one
  * 

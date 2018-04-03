@@ -10,6 +10,9 @@ import { dispatch, compose } from './handlers'
 
 const debug = createDebugger('aldo:application')
 
+export type IncomingRequest = { url: string; method: string; }
+export type OutgoingResponse = { statusCode: number; end(body?: any): void }
+
 /**
  * A global facade to manage routes, error handlers, dispatching, etc...
  */
@@ -96,36 +99,25 @@ export default class Application {
   /**
    * Return a request handler callback
    */
-  public callback (): (req: { url: string; method: string; }, res: { end(): void; }) => any {
-    // ensure the app has an error handler
-    if (this._errorHandlers.length === 0) {
-      throw new Error(`An error handler is required.`)
-    }
-
+  public callback (): (req: IncomingRequest, res: OutgoingResponse) => any {
     // compose handlers
     var handle = compose(this._combineHandlers())
-    var handleError = compose(this._errorHandlers)
+    var terminate = (ctx: Context) => () => setImmediate(this._finalHandler, ctx)
+    var handleError = compose(this._errorHandlers.length > 0 ? this._errorHandlers : [_report])
 
     // export
-    return async (req, res) => {
+    return (req, res) => {
       var ctx = this._context.from(req, res)
 
       debug(`dispatching: ${req.method} ${req.url}`)
 
-      try {
-        await handle(ctx)
-      } catch (err) {
-        // ensure `err` is an instance of `Error`
-        if (!(err instanceof Error)) {
-          err = new TypeError(format('non-error thrown: %j', err))
-        }
+      handle(ctx)
+        .catch((err) => {
+          ctx.error = err
 
-        ctx.error = err
-
-        await handleError(ctx)
-      } finally {
-        await this._finalHandler(ctx)
-      }
+          return handleError(ctx)
+        })
+        .then(terminate(ctx))
     }
   }
 
@@ -258,6 +250,18 @@ function _ensureFunction<T> (arg: T): T {
  */
 function _respond ({ res }: Context) {
   res.end()
+}
+
+/**
+ * Send the error response
+ * 
+ * @param ctx
+ * @private
+ */
+function _report ({ error, res }: Context) {
+  console.error(error)
+  res.statusCode = 500
+  res.end(error.message)
 }
 
 /**
