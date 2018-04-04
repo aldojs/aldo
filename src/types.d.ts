@@ -29,8 +29,7 @@ declare interface Application {
 }
 
 declare interface Context extends Literal {
-  error?: any;
-  res: ServerResponse;
   req: IncomingMessage;
-  params: { [x: string]: string; };
+  res: ServerResponse;
+  error?: any;
 }

@@ -1,59 +1,37 @@
 
+import * as http from 'http'
 import { format } from 'util'
-import { setImmediate } from 'timers'
+import { compose } from './handlers'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
-import * as RadixTree from 'find-my-way'
 import { Handler, Context } from './types'
-import { createServer, Server } from 'http'
-import { dispatch, compose } from './handlers'
 
 const debug = createDebugger('aldo:application')
-
-export type IncomingRequest = { url: string; method: string; }
-export type OutgoingResponse = { statusCode: number; end(body?: any): void }
 
 /**
  * A global facade to manage routes, error handlers, dispatching, etc...
  */
 export default class Application {
-  private _tree = new RadixTree()
-  private _presHandlers: Handler[] = []
-  private _postsHandlers: Handler[] = []
+  private _handlers: Handler[] = []
   private _errorHandlers: Handler[] = []
   private _context = new ContextFactory()
-  private _finalHandler: Handler = _respond
 
   /**
-   * Add a pre route handler
+   * Use request handlers
    * 
    * @param fns
    */
-  public pre (...fns: Handler[]): this {
+  public use (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._presHandlers.push(_ensureFunction(fn))
-      debug(`use pre handler: ${fn.name || '<anonymous>'}`)
+      this._handlers.push(_ensureFunction(fn))
+      debug(`use handler: ${fn.name || '<anonymous>'}`)
     }
 
     return this
   }
 
   /**
-   * Add a post route handler
-   * 
-   * @param fns
-   */
-  public post (...fns: Handler[]): this {
-    for (let fn of fns) {
-      this._postsHandlers.push(_ensureFunction(fn))
-      debug(`use post handler: ${fn.name || '<anonymous>'}`)
-    }
-
-    return this
-  }
-
-  /**
-   * Add an error handler
+   * Use error handlers
    * 
    * @param fns
    */
@@ -67,57 +45,28 @@ export default class Application {
   }
 
   /**
-   * Set the final request handler
-   * 
-   * @param fn
+   * Return a request callback
    */
-  public finally (fn: Handler): this {
-    this._finalHandler = _ensureFunction(fn)
-    debug(`use final handler: ${fn.name || '<anonymous>'}`)
-    return this
-  }
-
-  /**
-   * Register a route handlers
-   * 
-   * @param method
-   * @param path
-   * @param fns
-   */
-  public on (method: string | string[], path: string | string[], ...fns: Handler[]): this {
-    fns.forEach(_ensureFunction)
-
-    if (typeof path === 'string') path = [path]
-
-    for (let _path of path) {
-      this._on(method, _path, fns)
-    }
-
-    return this
-  }
-
-  /**
-   * Return a request handler callback
-   */
-  public callback (): (req: IncomingRequest, res: OutgoingResponse) => any {
-    // compose handlers
-    var handle = compose(this._combineHandlers())
-    var terminate = (ctx: Context) => () => setImmediate(this._finalHandler, ctx)
+  public callback (): (req: http.IncomingMessage, res: http.ServerResponse) => void {
     var handleError = compose(this._errorHandlers.length > 0 ? this._errorHandlers : [_report])
+    var dispatch = compose(this._handlers)
 
-    // export
     return (req, res) => {
       var ctx = this._context.from(req, res)
 
       debug(`dispatching: ${req.method} ${req.url}`)
 
-      handle(ctx)
-        .catch((err) => {
-          ctx.error = err
+      dispatch(ctx).catch((err) => {
+        // ensure `err` is an instance of `Error`
+        if (!(err instanceof Error)) {
+          err = new TypeError(format('non-error thrown: %j', err))
+        }
 
-          return handleError(ctx)
-        })
-        .then(terminate(ctx))
+        // set the error
+        ctx.error = err
+
+        return handleError(ctx)
+      })
     }
   }
 
@@ -129,6 +78,7 @@ export default class Application {
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
     this._context.bind(prop, _ensureFunction(fn))
+    debug(`set a private context attribute: ${prop}`)
     return this
   }
 
@@ -140,6 +90,7 @@ export default class Application {
    */
   public set (prop: string, value: any): this {
     this._context.set(prop, value)
+    debug(`set a shared context attribute: ${prop}`)
     return this
   }
 
@@ -166,67 +117,8 @@ export default class Application {
    * 
    *     http.createServer(app.callback()).listen(...args)
    */
-  public listen (): Server {
-    return createServer(this.callback() as any).listen(...arguments)
-  }
-
-  /**
-   * 
-   * 
-   * @param method
-   * @param path
-   * @param fns
-   * @private
-   */
-  private _on (method: string | string[], path: string, fns: Handler[]) {
-    if (Array.isArray(method)) {
-      for (let _m of method)
-        this._on(_m, path, fns)
-
-      return
-    }
-
-    // Normalize the method name
-    method = method.toUpperCase()
-
-    this._tree.on(method, path, compose(fns))
-
-    debug(`add handlers for route: ${method} ${path}`)
-  }
-
-  /**
-   * Combine global and route handlers
-   * 
-   * @param fns
-   * @private
-   */
-  private _combineHandlers (): Handler[] {
-    return [
-      ...this._presHandlers,
-      this._dispatchRoute.bind(this),
-      ...this._postsHandlers.reverse()
-    ]
-  }
-
-  /**
-   * Search and invoke the matched route handlers
-   * 
-   * @param ctx
-   * @private
-   */
-  private _dispatchRoute (ctx: Context): any {
-    var { method, url } = ctx.req
-    var found = this._tree.find(method, _sanitize(url))
-
-    if (!found) {
-      throw new Error(`Route not found: ${method} ${url}`)
-    }
-
-    // add url params to the context
-    ctx.params = found.params || {}
-
-    // invoke the route handler
-    return found.handler(ctx)
+  public listen (): http.Server {
+    return http.createServer(this.callback() as any).listen(...arguments)
   }
 }
 
@@ -236,49 +128,20 @@ export default class Application {
  * @param arg
  * @private
  */
-function _ensureFunction<T> (arg: T): T {
+function _ensureFunction (arg: any): Handler {
   if (typeof arg === 'function') return arg
 
-  throw new TypeError(`Function expected but ${typeof arg} given.`)
-}
-
-/**
- * Send the response
- * 
- * @param ctx
- * @private
- */
-function _respond ({ res }: Context) {
-  res.end()
+  throw new TypeError(`Function expected but got ${typeof arg}.`)
 }
 
 /**
  * Send the error response
  * 
  * @param ctx
- * @private
  */
 function _report ({ error, res }: Context) {
-  console.error(error)
-  res.statusCode = 500
+  res.statusCode = error.status || 500
   res.end(error.message)
-}
 
-/**
- * Returns only the pathname
- * 
- * @param url
- * @private
- */
-function _sanitize (url: string): string {
-  for (var i = 0; i < url.length; i++) {
-    var charCode = url.charCodeAt(i)
-
-    //              "?"                "#"
-    if (charCode === 63 || charCode === 35) {
-      return url.slice(0, i)
-    }
-  }
-
-  return url
+  console.error(error)
 }

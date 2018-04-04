@@ -1,50 +1,39 @@
 
-import { format } from 'util'
 import { setImmediate } from 'timers'
 import { Context, Handler } from './types'
+
+/**
+ * Compose multiple handlers into a single handler
+ * 
+ * @param fns
+ */
+export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
+  return (ctx) => _dispatch(ctx, fns)
+}
 
 /**
  * Invoke the context handlers one by one
  * 
  * @param ctx
  * @param fns
+ * @private
  */
-export function dispatch (ctx: Context, fns: Handler[]): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
+function _dispatch (ctx: Context, fns: Handler[]): Promise<any> {
+  return new Promise((resolve, reject) => {
     var i = 0
 
     next()
 
-    function next (err?: any, finish = false): void {
-      if (finish) return resolve(false)
-
-      if (err != null) {
-        // ensure `err` is an instance of `Error`
-        if (!(err instanceof Error)) {
-          err = new TypeError(format('non-error thrown: %j', err))
-        }
-
-        if (ctx.error == null) return reject(err)
-
-        ctx.error = err
-      }
+    function next (err?: any, stop = false): void {
+      if (err != null) return reject(err)
 
       var fn = fns[i++]
 
-      if (!fn) return resolve()
+      if (stop || !fn) return resolve()
 
-      setImmediate(_tryHandler, fn, ctx, next)
+      setImmediate(_try, fn, ctx, next)
     }
   })
-}
-
-/**
- * Compose multiple handlers into a single one
- * 
- * @param fns
- */
-export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
-  return (ctx) => dispatch(ctx, fns)
 }
 
 /**
@@ -55,13 +44,15 @@ export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
  * @param next
  * @private
  */
-async function _tryHandler (fn: Handler, ctx: Context, next: (err?: any, finish?: boolean) => void) {
+async function _try (fn: Handler, ctx: Context, next: NextFn) {
   try {
-    var callNext: any = await fn(ctx)
+    var call: any = await fn(ctx)
 
-    callNext === false ? next(null, true) : next()
+    next(null, call === false)
   }
   catch (error) {
     next(error)
   }
 }
+
+type NextFn = (err?: any, stop?: boolean) => void
