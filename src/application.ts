@@ -1,7 +1,7 @@
 
 import * as http from 'http'
 import { format } from 'util'
-import { compose } from './handlers'
+import compose from './handlerz'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
 import { Handler, Context } from './types'
@@ -138,6 +138,7 @@ function _ensureFunction (arg: any): Handler {
  * Send the error response
  * 
  * @param ctx
+ * @private
  */
 function _report ({ error, res }: Context) {
   res.statusCode = error.status || 500

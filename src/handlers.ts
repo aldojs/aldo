@@ -8,6 +8,7 @@ import { Context, Handler } from './types'
  * @param fns
  */
 export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
+  // TODO ensure `fns` are functions
   return (ctx) => _dispatch(ctx, fns)
 }
 
