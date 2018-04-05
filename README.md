@@ -115,7 +115,15 @@ You may use it to check the existence of a certain field
 You may use it to get a previously defined field value.
 
 ## Contributing
-All contributions are welcome, so let's [discuss](https://github.com/aldojs/aldo)
+You have a lot of ways to help the project grow.
+
+- Report an [issue](https://github.com/aldojs/aldo/issues)
+- Propose a [feature](https://github.com/aldojs/aldo/issues)
+- Send a [pull request](https://github.com/aldojs/aldo/pulls)
+- Star the project on [GitHub](https://github.com/aldojs/aldo)
+- Tell about project around your community
+
+All contributions are appreciated, even the smallest. Thank you!
 
 ## License
 [MIT License](https://opensource.org/licenses/MIT)

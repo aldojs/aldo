@@ -1,7 +1,7 @@
 
 import * as http from 'http'
 import { format } from 'util'
-import compose from './handlerz'
+import { compose } from './handlers'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
 import { Handler, Context } from './types'

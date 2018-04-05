@@ -1,13 +1,12 @@
 
 import { setImmediate } from 'timers'
-import { Context, Handler } from './types'
 
 /**
  * Compose multiple handlers into a single handler
  * 
  * @param fns
  */
-export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
+export function compose (fns: Function[]): (ctx: object) => Promise<any> {
   // TODO ensure `fns` are functions
   return (ctx) => _dispatch(ctx, fns)
 }
@@ -19,7 +18,7 @@ export function compose (fns: Handler[]): (ctx: Context) => Promise<any> {
  * @param fns
  * @private
  */
-function _dispatch (ctx: Context, fns: Handler[]): Promise<any> {
+function _dispatch (ctx: object, fns: Function[]): Promise<any> {
   return new Promise((resolve, reject) => {
     var i = 0
 
@@ -45,7 +44,7 @@ function _dispatch (ctx: Context, fns: Handler[]): Promise<any> {
  * @param next
  * @private
  */
-async function _try (fn: Handler, ctx: Context, next: NextFn) {
+async function _try (fn: Function, ctx: object, next: NextFn) {
   try {
     var call: any = await fn(ctx)
 
