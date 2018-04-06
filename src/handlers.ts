@@ -6,19 +6,19 @@ import { setImmediate } from 'timers'
  * 
  * @param fns
  */
-export function compose (fns: Function[]): (ctx: object) => Promise<any> {
+export function compose (fns: Function[]): (...args: any[]) => Promise<void> {
   // TODO ensure `fns` are functions
-  return (ctx) => _dispatch(ctx, fns)
+  return (...args: any[]) => _dispatch(args, fns)
 }
 
 /**
- * Invoke the context handlers one by one
+ * Invoke the handlers one by one
  * 
- * @param ctx
+ * @param args
  * @param fns
  * @private
  */
-function _dispatch (ctx: object, fns: Function[]): Promise<any> {
+function _dispatch (args: any[], fns: Function[]): Promise<void> {
   return new Promise((resolve, reject) => {
     var i = 0
 
@@ -31,7 +31,7 @@ function _dispatch (ctx: object, fns: Function[]): Promise<any> {
 
       if (stop || !fn) return resolve()
 
-      setImmediate(_try, fn, ctx, next)
+      setImmediate(_try, fn, args, next)
     }
   })
 }
@@ -40,13 +40,13 @@ function _dispatch (ctx: object, fns: Function[]): Promise<any> {
  * Try the current handler then call the next one
  * 
  * @param fn
- * @param ctx
+ * @param args
  * @param next
  * @private
  */
-async function _try (fn: Function, ctx: object, next: NextFn) {
+async function _try (fn: Function, args: any[], next: (err?: any, stop?: boolean) => void) {
   try {
-    var call: any = await fn(ctx)
+    var call: any = await fn(...args)
 
     next(null, call === false)
   }
@@ -54,5 +54,3 @@ async function _try (fn: Function, ctx: object, next: NextFn) {
     next(error)
   }
 }
-
-type NextFn = (err?: any, stop?: boolean) => void

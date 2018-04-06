@@ -9,7 +9,7 @@ import { Handler, Context } from './types'
 const debug = createDebugger('aldo:application')
 
 /**
- * A global facade to manage routes, error handlers, dispatching, etc...
+ * 
  */
 export default class Application {
   private _handlers: Handler[] = []
