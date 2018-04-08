@@ -2,7 +2,7 @@
 import * as http from 'http'
 import { format } from 'util'
 import * as assert from 'assert'
-import { compose } from './handlers'
+import compose from 'aldo-compose'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
 import { Handler, Context } from './types'
