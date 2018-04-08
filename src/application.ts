@@ -1,6 +1,7 @@
 
 import * as http from 'http'
 import { format } from 'util'
+import * as assert from 'assert'
 import { compose } from './handlers'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
@@ -23,8 +24,10 @@ export default class Application {
    */
   public use (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._handlers.push(_ensureFunction(fn))
+      assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+
       debug(`use handler: ${fn.name || '<anonymous>'}`)
+      this._handlers.push(fn as Handler)
     }
 
     return this
@@ -37,8 +40,10 @@ export default class Application {
    */
   public catch (...fns: Handler[]): this {
     for (let fn of fns) {
-      this._errorHandlers.push(_ensureFunction(fn))
+      assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+
       debug(`use error handler: ${fn.name || '<anonymous>'}`)
+      this._errorHandlers.push(fn)
     }
 
     return this
@@ -77,8 +82,9 @@ export default class Application {
    * @param fn
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
-    this._context.bind(prop, _ensureFunction(fn))
+    assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
     debug(`set a private context attribute: ${prop}`)
+    this._context.bind(prop, fn)
     return this
   }
 
@@ -89,8 +95,8 @@ export default class Application {
    * @param value
    */
   public set (prop: string, value: any): this {
-    this._context.set(prop, value)
     debug(`set a shared context attribute: ${prop}`)
+    this._context.set(prop, value)
     return this
   }
 
@@ -123,26 +129,14 @@ export default class Application {
 }
 
 /**
- * Ensure the given argument is a function
+ * Handle the error response
  * 
- * @param arg
- * @private
- */
-function _ensureFunction (arg: any): Handler {
-  if (typeof arg === 'function') return arg
-
-  throw new TypeError(`Function expected but got ${typeof arg}.`)
-}
-
-/**
- * Send the error response
- * 
+ * @param error
  * @param ctx
  * @private
  */
-function _report ({ error, res }: Context) {
-  res.statusCode = error.status || 500
-  res.end(error.message)
-
+function _report (error: any, { res }: Context) {
   console.error(error)
+  res.statusCode = error.status || 500
+  res.end(error.expose ? error.message : 'Internal Server Error')
 }

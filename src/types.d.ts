@@ -1,6 +1,4 @@
 
-/// <reference types="node" />
-
 import * as http from 'http'
 
 declare type Literal = { [x: string]: any; };

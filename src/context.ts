@@ -73,7 +73,6 @@ export default class {
 
     ctx.res = res
     ctx.req = req
-    ctx.params = {}
 
     return ctx
   }
