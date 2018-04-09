@@ -10,9 +10,9 @@ import { Handler, Context } from './types'
 const debug = createDebugger('aldo:application')
 
 /**
- * 
+ * @class Application
  */
-export default class Application {
+export default class {
   private _handlers: Handler[] = []
   private _errorHandlers: Handler[] = []
   private _context = new ContextFactory()
@@ -20,32 +20,34 @@ export default class Application {
   /**
    * Use request handlers
    * 
+   * Multiple handlers will be grouped into a single handler
+   * 
    * @param fns
    */
   public use (...fns: Handler[]): this {
-    for (let fn of fns) {
+    if (fns.length === 0) return this
+
+    fns.forEach((fn) => {
       assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+    })
 
-      debug(`use handler: ${fn.name || '<anonymous>'}`)
-      this._handlers.push(fn as Handler)
-    }
+    var fn = (fns.length === 1) ? fns[0] : compose(fns)
 
+    debug(`use handler: ${fn.name || '<anonymous>'}`)
+    this._handlers.push(fn)
     return this
   }
 
   /**
-   * Use error handlers
+   * Use error handler
    * 
-   * @param fns
+   * @param fn
    */
-  public catch (...fns: Handler[]): this {
-    for (let fn of fns) {
-      assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+  public catch (fn: Handler): this {
+    assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
 
-      debug(`use error handler: ${fn.name || '<anonymous>'}`)
-      this._errorHandlers.push(fn)
-    }
-
+    debug(`use error handler: ${fn.name || '<anonymous>'}`)
+    this._errorHandlers.push(fn)
     return this
   }
 
