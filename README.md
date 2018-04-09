@@ -1,37 +1,44 @@
 
 > This project is under heavy development, and the API is unstable and may change frequently.
 
-`Aldo` is a micro framework that helps you quickly write simple yet powerful web applications and APIs for Node.js 8+.
-It is super fast and has very little code.
-In fact, you can read and understand its source code in only an afternoon!
+`Aldo` is a super fast micro framework that helps you quickly write simple yet powerful web applications and APIs for Node.js 8+.
 
-At its core, `Aldo` is a dispatcher that invokes a serial callback stack to handle the incoming HTTP request. That’s it.
+At its core, `Aldo` is a dispatcher that invokes a series of callbacks to handle the incoming HTTP request. That’s it.
 
 ```js
 const { Application } = require('aldo')
 
 const app = new Application()
 
-// add the first handler
+// add a request handler
 app.use(({ res }) => {
   res.setHeader('Content-Type', 'text/plain')
   res.end('Hello world!')
 })
 
 // create a HTTP server to serve the application
-app.listen(3000)
+app.listen(process.env.PORT)
 ```
 
 ## Handlers (aka middlewares)
-Unlike the other web frameworks, `Aldo` uses handlers that take only **one** argument "the [*context*](#context)", which is a literal object holding everything you need to handle the incoming HTTP request.
-
-When the current handler has finished its job, the [context](#context) object is passed automatically to the next handler, and so on, till the last one.
-
-To break this chain, just return `false` or `Promise<false>`.
+Unlike the other web frameworks, `Aldo` uses handlers that take only **one** argument the [context](#context), which is a literal object holding everything you need to handle the incoming HTTP request.
 
 ```ts
 // Handler function signature
 declare type Handler = (ctx: Context) => any;
+```
+
+When the current handler has finished its job, the [context](#context) object is passed automatically to the next handler, and so on, till the last one.
+To break that chain, just return `false` or `Promise<false>`.
+
+### `.use(...fns)`
+
+```js
+// to add a handler directly in the stack
+app.use(handler)
+
+// to compose multiple handlers into a single handler
+app.use(fn1, fn2, ...)
 ```
 
 You may be wondering, where is the `next` argument ?
@@ -55,23 +62,26 @@ app.use((ctx) => {
 })
 ```
 
-### Request handlers
-Request handlers are invoked for every incoming HTTP request.
-You may add handlers with the application instance’s `.use(...fns)` method.
+### `.catch(errorHandler)`
+You may attach error handlers as many as needed with `.catch(fn)`.
 
 ```js
-// will attach one or more global handlers
-app.use(...handlers)
-```
-
-### Error handlers
-You may attach error handlers as many as needed with `.catch(...fns)`.
-
-```js
-app.catch(...handlers)
+app.catch(handler)
 ```
 
 When an error is thrown, during the request handling, will be attached to the [context](#context) object and passed to each handler one by one, unless you return a `false` which will stop the error handling sequence.
+
+### `.callback()`
+Return a callback function suitable as a listener for the `http.createServer()` method to handle a request.
+
+### `.listen(...args)`
+Create and return an HTTP server, passing the given arguments to `Server#listen()`.
+These arguments are documented on [nodejs.org](https://nodejs.org/dist/latest-v8.x/docs/api/net.html#net_server_listen)
+
+```js
+// This method is simply sugar for
+http.createServer(app.callback()).listen(3000)
+```
 
 ## Context
 The context object is not a proxy to the request and response properties, it's a simple plain object with only 2 mandatory properties: `req`, `res`, which are the `IncomingMessage` and the `ServerResponse` HTTP native objects.
