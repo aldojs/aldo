@@ -1,14 +1,12 @@
 
-import * as http from 'http'
-
-declare type Literal = { [x: string]: any; };
+import * as http from 'http';
 
 declare type Handler = (ctx: Context) => any;
 
 declare type ErrorHandler = (err: any, ctx: Context) => any;
 
-declare interface Context extends Literal {
+declare interface Context {
   req: http.IncomingMessage;
   res: http.ServerResponse;
-  error?: any;
+  [key: string]: any;
 }
