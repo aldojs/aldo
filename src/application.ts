@@ -5,7 +5,7 @@ import * as assert from 'assert'
 import compose from 'aldo-compose'
 import ContextFactory from './context'
 import * as createDebugger from 'debug'
-import { Handler, Context } from './types'
+import { Handler, Context, ErrorHandler } from './types'
 
 const debug = createDebugger('aldo:application')
 
@@ -14,8 +14,8 @@ const debug = createDebugger('aldo:application')
  */
 export default class {
   private _handlers: Handler[] = []
-  private _errorHandlers: Handler[] = []
   private _context = new ContextFactory()
+  private _errorHandlers: ErrorHandler[] = []
 
   /**
    * Use request handlers
@@ -39,11 +39,11 @@ export default class {
   }
 
   /**
-   * Use error handler
+   * Use an error handler
    * 
    * @param fn
    */
-  public catch (fn: Handler): this {
+  public catch (fn: ErrorHandler): this {
     assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
 
     debug(`use error handler: ${fn.name || '<anonymous>'}`)
@@ -52,7 +52,7 @@ export default class {
   }
 
   /**
-   * Return a request callback
+   * Return a request listener
    */
   public callback (): (req: http.IncomingMessage, res: http.ServerResponse) => void {
     var handleError = compose(this._errorHandlers.length > 0 ? this._errorHandlers : [_report])
@@ -69,10 +69,7 @@ export default class {
           err = new TypeError(format('non-error thrown: %j', err))
         }
 
-        // set the error
-        ctx.error = err
-
-        return handleError(ctx)
+        return handleError(err, ctx)
       })
     }
   }
