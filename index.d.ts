@@ -3,16 +3,10 @@
 
 import * as http from 'http';
 
-export type Literal = { [x: string]: any; };
-
-export type Handler = (ctx: Context) => any;
-
-export type ErrorHandler = (err: any, ctx: Context) => any;
-
-export interface Context extends Literal {
+export interface Context {
   req: http.IncomingMessage;
   res: http.ServerResponse;
-  error?: any;
+  [field: string]: any;
 }
 
 export class Application {
@@ -51,14 +45,14 @@ export class Application {
    *
    * @param fns
    */
-  use(...fns: Handler[]): this;
+  use(...fns: ((ctx: Context) => any)[]): this;
 
   /**
    * Use an error handler
    *
    * @param fns
    */
-  catch(...fns: ErrorHandler[]): this;
+  catch(fn: (err: any, ctx: Context) => any): this;
 
   /**
    * Shorthand for:

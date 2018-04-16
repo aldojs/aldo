@@ -25,10 +25,10 @@ export default class {
    * @param fns
    */
   public use (...fns: Handler[]): this {
-    if (fns.length === 0) return this
+    assert(fns.length, 'Expect a function but got nothing.')
 
     fns.forEach((fn) => {
-      assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+      assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
     })
 
     var fn = (fns.length === 1) ? fns[0] : compose(fns)
@@ -44,8 +44,7 @@ export default class {
    * @param fn
    */
   public catch (fn: ErrorHandler): this {
-    assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
-
+    assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
     debug(`use error handler: ${fn.name || '<anonymous>'}`)
     this._errorHandlers.push(fn)
     return this
@@ -81,7 +80,7 @@ export default class {
    * @param fn
    */
   public bind (prop: string, fn: (ctx: Context) => any): this {
-    assert(typeof fn === 'function', `Function expected but got ${typeof fn}.`)
+    assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
     debug(`set a private context attribute: ${prop}`)
     this._context.bind(prop, fn)
     return this
