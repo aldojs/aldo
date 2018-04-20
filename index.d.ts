@@ -41,25 +41,18 @@ export class Application {
   has(prop: string): boolean;
 
   /**
-   * Use request handlers
+   * Use request middleware
    *
-   * @param fns
+   * @param fn
    */
-  use(...fns: ((ctx: Context) => any)[]): this;
-
-  /**
-   * Use an error handler
-   *
-   * @param fns
-   */
-  catch(fn: (err: any, ctx: Context) => any): this;
+  use(fn: (ctx: Context, next: () => Promise<void>) => any): this;
 
   /**
    * Shorthand for:
    *
    *     http.createServer(app.callback()).listen(...args)
    */
-  listen(): http.Server;
+  listen(...args: any[]): http.Server;
 
   /**
    * Return a request listener

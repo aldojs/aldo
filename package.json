@@ -4,9 +4,9 @@
   "description": "Fast micro framework for Node.js 8+",
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "test": "mocha -R dot -r ts-node/register \"test/**/*.ts\""
+    "lint": "standard lib/*.js",
+    "prepublishOnly": "npm test",
+    "test": "mocha"
   },
   "files": [
     "lib",
@@ -32,15 +32,12 @@
   },
   "homepage": "https://github.com/aldojs/aldo#readme",
   "devDependencies": {
-    "@types/debug": "0.0.30",
-    "@types/mocha": "^2.2.48",
-    "@types/node": "^8.9.5",
     "mocha": "^5.0.1",
-    "ts-node": "^4.1.0",
-    "typescript": "^2.7.1"
+    "standard": "^11.0.1"
   },
   "dependencies": {
-    "aldo-compose": "^1.0.1",
+    "aldo-compose": "^2.0.0",
+    "aldo-context": "^1.0.0",
     "debug": "^3.1.0"
   }
 }
