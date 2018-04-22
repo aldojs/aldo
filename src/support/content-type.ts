@@ -1,4 +1,5 @@
 
+import * as mime from 'mime-types'
 import { is as typeis } from 'type-is'
 
 /**
@@ -16,4 +17,12 @@ export function extract (header: string): string | undefined {
  */
 export function is (header: string, types: string[]): string | false {
   return header ? typeis(header, types) : false
+}
+
+/**
+ * 
+ * @param filenameOrExt
+ */
+export function normalize (filenameOrExt: string): string | false {
+  return mime.contentType(filenameOrExt)
 }
