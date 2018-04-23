@@ -1,6 +1,7 @@
 
 import Request from './request'
 import * as assert from 'assert'
+import Response from './response'
 import { setImmediate } from 'timers'
 import * as compose from 'aldo-compose'
 import * as createDebugger from 'debug'
@@ -52,27 +53,24 @@ export default class Application {
    * Return a request listener
    */
   callback (): (req: IncomingMessage, res: ServerResponse) => void {
-    var dispatch = compose(this._middlewares)
+    let dispatch = compose(this._middlewares)
 
     return (req, res) => {
-      var ctx = this._context.create(new Request(req, this._options))
+      let ctx = this._context.create(new Request(req, this._options))
 
       debug(`dispatching: ${req.method} ${req.url}`)
 
-      setImmediate(dispatch, ctx)
-      // setImmediate(async () => {
-      //   var out = await dispatch(ctx)
-
-      //   response(out).send(res)
-      // })
+      setImmediate(() => {
+        dispatch(ctx).then((content) => Response.from(content).send(res))
+      })
     }
   }
 
   /**
    * Extend the app context by adding per instance property
    *
-   * @param {String} prop
-   * @param {Function} fn
+   * @param prop
+   * @param fn
    */
   bind (prop: string, fn: (ctx: Context) => any) {
     assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
@@ -96,19 +94,18 @@ export default class Application {
   /**
    * Get a value from the app context
    *
-   * @param {String} prop
+   * @param prop
    */
-  get (prop: string) {
+  get (prop: string): any {
     return this._context.get(prop)
   }
 
   /**
    * Check if the prop is defined in the app context
    *
-   * @param {String} prop
-   * @returns {Boolean}
+   * @param prop
    */
-  has (prop: string) {
+  has (prop: string): boolean {
     return this._context.has(prop)
   }
 
