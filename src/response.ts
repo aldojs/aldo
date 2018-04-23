@@ -2,11 +2,10 @@
 import * as assert from 'assert'
 import * as cookie from './support/cookie'
 import * as ct from './support/content-type'
+import * as cl from './support/content-length'
 import * as statuses from './support/status-code'
 import { OutgoingHttpHeaders, ServerResponse } from 'http'
-
-const HTML_TAG_RE = /^\s*</
-const SEPARATOR_RE = /\s*,\s*/
+import { isStream, isString, isWritable, isObject } from './support/util'
 
 export default class Response {
   /**
@@ -39,7 +38,7 @@ export default class Response {
 
     let resp = new Response()
 
-    resp.body = content
+    if (content != null) resp.body = content
 
     return resp
   }
@@ -63,7 +62,7 @@ export default class Response {
     this._status = code
     this._message = statuses.messageOf(code)
 
-    if (this.body && statuses.isEmpty(code)) this.body = null
+    if (this.body && statuses.isEmpty(code)) this._clearBody()
   }
 
   /**
@@ -124,24 +123,7 @@ export default class Response {
    * Get the response content length or NaN otherwise.
    */
   public get length (): number {
-    if (this.has('Content-Length')) {
-      return this.get('Content-Length') as number
-    }
-
-    if (this.body) {
-      let { body } = this
-
-      if (_isString(body) || Buffer.isBuffer(body)) {
-        return Buffer.byteLength(body)
-      }
-
-      // json
-      if (!_isStream(body)) {
-        return Buffer.byteLength(JSON.stringify(body))
-      }
-    }
-    
-    return NaN
+    return this.get('Content-Length') as number || cl.from(this.body)
   }
 
   /**
@@ -155,40 +137,22 @@ export default class Response {
    * Set the response body
    */
   public set body (value: any) {
-    this._body = value
-
     // empty body
     if (value == null) {
       if (!statuses.isEmpty(this.status)) this.status = 204
 
-      this.remove('Transfer-Encoding')
-      this.remove('Content-Length')
-      this.remove('Content-type')
+      this._clearBody()
       return
     }
+
+    this._body = value
 
     // status code
     this.status = 200
 
-    // string
-    if (_isString(value)) {
-      if (!this.has('Content-Type')) {
-        let type = HTML_TAG_RE.test(value) ? 'html' : 'plain'
-  
-        this.set('Content-Type', `text/${type}; charset=utf-8`)
-      }
-    }
-
-    // buffer or stream
-    else if (Buffer.isBuffer(value) || _isStream(value)) {
-      if (!this.has('Content-Type')) {
-        this.set('Content-Type', 'application/octet-stream')
-      }
-    }
-
-    // json
-    else if (!this.has('Content-Type')) {
-      this.set('Content-Type', 'application/json; charset=utf-8')
+    // content type
+    if (!this.has('Content-Type')) {
+      this.set('Content-Type', ct.from(value))
     }
   }
 
@@ -323,7 +287,7 @@ export default class Response {
    */
   public set (header: string, value: string | number | string[]): this
   public set (header: any, value?: any) {
-    if (_isObject(header)) {
+    if (isObject(header)) {
       for (let name in header)
         this.set(name, header[name])
     }
@@ -429,20 +393,28 @@ export default class Response {
    * @param res
    */
   public send (res: ServerResponse): void {
+    // socket not writable
+    if (!isWritable(res)) return
+
     let { body: content, status } = this
 
     if (!res.headersSent) {
-      res.writeHead(status, this.headers)
-    }
+      // FIXME: `res.writeHead` is slow
+      // res.writeHead(status, this.message, this.headers)
 
-    // stream not writable
-    if (!_isWritable(res)) return
+      res.statusCode = status
+      res.statusMessage = this.message
+
+      for (let field in this.headers) {
+        res.setHeader(field, this.headers[field] as any)
+      }
+    }
 
     // ignore body
     if (statuses.isEmpty(status)) return res.end()
 
     // stream
-    if (_isStream(content)) {
+    if (isStream(content)) {
       content.pipe(res)
       return
     }
@@ -454,55 +426,21 @@ export default class Response {
     }
 
     // json
-    if (! (_isString(content) || Buffer.isBuffer(content))) {
+    if (! (isString(content) || Buffer.isBuffer(content))) {
       content = JSON.stringify(content)
     }
 
     // terminate
     res.end(content)
   }
-}
 
-/**
- * Check if the argument is a stream instance
- * 
- * @param stream
- * @private
- */
-function _isStream (stream: any): boolean {
-  return _isObject(stream) && typeof stream.pipe === 'function'
-}
-
-/**
- * Check if the argument is an object
- * 
- * @param obj
- */
-function _isObject (obj: any) {
-  return obj && typeof obj === 'object'
-}
-
-/**
- * Check if the argument is a string
- * 
- * @param arg
- */
-function _isString (arg: any): boolean {
-  return typeof arg === 'string'
-}
-
-/**
- * Check if the outgoing response is yet writable
- * 
- * @param res
- * @private
- */
-function _isWritable (res: ServerResponse): boolean {
-  // can't write any more after response finished
-  if (res.finished) return false
-
-  // pending writable outgoing response
-  if (!res.connection) return true
-
-  return res.connection.writable
+  /**
+   * Clear the response body and remove the content headers
+   */
+  private _clearBody () {
+    this.remove('Transfer-Encoding')
+    this.remove('Content-Length')
+    this.remove('Content-type')
+    this._body = null
+  }
 }
