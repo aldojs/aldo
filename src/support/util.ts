@@ -1,4 +1,5 @@
 
+import { Stream } from 'stream'
 import { ServerResponse } from 'http'
 
 /**
@@ -6,7 +7,7 @@ import { ServerResponse } from 'http'
  * 
  * @param obj
  */
-export function isString (obj: any): boolean {
+export function isString (obj: any): obj is string {
   return typeof obj === 'string'
 }
 
@@ -15,7 +16,7 @@ export function isString (obj: any): boolean {
  * 
  * @param obj
  */
-export function isObject (obj: any) {
+export function isObject (obj: any): obj is { [x: string]: any } {
   return obj && typeof obj === 'object'
 }
 
@@ -24,7 +25,7 @@ export function isObject (obj: any) {
  * 
  * @param obj
  */
-export function isStream (obj: any): boolean {
+export function isStream (obj: any): obj is Stream {
   return isObject(obj) && typeof obj.pipe === 'function'
 }
 
