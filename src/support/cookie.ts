@@ -1,7 +1,7 @@
 
 import * as cookie from 'cookie'
-
-const SYMBOL = '__cookie'
+import { isObject } from './util'
+import { IncomingMessage } from 'http'
 
 export type ParseOptions = cookie.CookieParseOptions
 export type SerializeOptions = cookie.CookieSerializeOptions
@@ -12,14 +12,14 @@ export type SerializeOptions = cookie.CookieSerializeOptions
  * @param req
  * @param options
  */
-export function parse (req: any, options?: ParseOptions): { [x: string]: string | undefined } {
-  if (req[SYMBOL] === undefined) {
-    let header = req.headers['cookie']
+export function parse ({ headers }: IncomingMessage, options?: ParseOptions): { [x: string]: string | undefined } {
+  let cookies = headers['cookie'] as any
 
-    req[SYMBOL] = header ? cookie.parse(header, options) : {}
+  if (!isObject(headers['cookie'])) {
+    headers['cookie'] = cookies ? cookie.parse(cookies, options) : {} as any
   }
 
-  return req[SYMBOL]
+  return headers['cookie'] as any
 }
 
 /**

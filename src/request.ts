@@ -32,7 +32,7 @@ export default class Request {
   /**
    * The incoming headers
    */
-  public get headers (): IncomingHttpHeaders {
+  public get headers (): { [key: string]: string | { [x: string]: any } | string[] | undefined } {
     return this.stream.headers
   }
 
@@ -61,7 +61,9 @@ export default class Request {
    * The URL query string
    */
   public get querystring (): string {
-    return url.parse(this.stream).query as string || ''
+    let value = url.parse(this.stream).search
+
+    return value ? value.slice(1) : ''
   }
 
   /**
@@ -112,7 +114,7 @@ export default class Request {
       if (values[0]) return values[0]
     }
 
-    return this.headers['host']
+    return this.headers['host'] as string
   }
 
   /**
@@ -181,7 +183,7 @@ export default class Request {
    * 
    * @param header
    */
-  public get (header: string): string | string[] | undefined {
+  public get (header: string): string | { [x: string]: any } | string[] | undefined {
     switch (header = header.toLowerCase()) {
       case 'referer':
       case 'referrer':
