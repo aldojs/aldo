@@ -1,7 +1,5 @@
 
 import * as url from './support/url'
-import * as cookie from './support/cookie'
-import * as qs from './support/query-string'
 import * as ct from './support/content-type'
 import * as charset from './support/charset'
 import * as forwarded from './support/forwarded'
@@ -32,15 +30,8 @@ export default class Request {
   /**
    * The incoming headers
    */
-  public get headers (): { [key: string]: string | { [x: string]: any } | string[] | undefined } {
+  public get headers (): IncomingHttpHeaders {
     return this.stream.headers
-  }
-
-  /**
-   * The parsed cookies object
-   */
-  public get cookies (): { [x: string]: string | undefined } {
-    return cookie.parse(this.stream)
   }
 
   /**
@@ -61,9 +52,7 @@ export default class Request {
    * The URL query string
    */
   public get querystring (): string {
-    let value = url.parse(this.stream).search
-
-    return value ? value.slice(1) : ''
+    return url.parse(this.stream).query as string || ''
   }
 
   /**
@@ -87,13 +76,6 @@ export default class Request {
     var len = this.headers['content-length'] as string
 
     return len ? Number(len) : NaN
-  }
-
-  /**
-   * The parsed query string
-   */
-  public get query (): { [key: string]: string | string[] | undefined } {
-    return qs.parse(this.stream)
   }
 
   /**

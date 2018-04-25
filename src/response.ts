@@ -1,6 +1,5 @@
 
 import * as assert from 'assert'
-import * as cookie from './support/cookie'
 import * as ct from './support/content-type'
 import * as cl from './support/content-length'
 import * as statuses from './support/status-code'
@@ -296,35 +295,6 @@ export default class Response {
     }
 
     return this
-  }
-
-  /**
-   * Set cookie `name` to `value`, with the given `options`.
-   * 
-   * Examples:
-   * 
-   *    // "Remember Me" for 15 minutes
-   *    res.cookie('remember', '1', { expires: new Date(Date.now() + 900000), httpOnly: true })
-   * 
-   *    // same as above
-   *    res.cookie('remember', '1', { maxAge: 900000, httpOnly: true })
-   * 
-   * @param name
-   * @param value
-   * @param options
-   */
-  public setCookie (name: string, value: string, options?: cookie.SerializeOptions): this {
-    return this.append('Set-Cookie', cookie.serialize(name, value, options))
-  }
-
-  /**
-   * Unset the cookie `name`.
-   * 
-   * @param name
-   * @param options
-   */
-  public clearCookie (name: string, options?: cookie.SerializeOptions): this {
-    return this.setCookie(name, '', { expires: new Date(0), ...options })
   }
 
   /**
