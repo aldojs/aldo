@@ -3,7 +3,7 @@ import 'mocha'
 import * as assert from 'assert'
 import { createResponse } from './_factory'
 
-describe('ctx.vary(field)', () => {
+describe('ctx.vary(...fields)', () => {
   describe('when Vary is not set', () => {
     it('should set it', () => {
       const response = createResponse()

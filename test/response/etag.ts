@@ -3,11 +3,11 @@ import 'mocha'
 import * as assert from 'assert'
 import { createResponse } from './_factory'
 
-describe('response.etag=', () => {
+describe('response.etag(value)', () => {
   it('should not modify an etag with quotes', () => {
     const response = createResponse()
 
-    response.etag = '"asdf"'
+    response.etag('"asdf"')
 
     assert.equal(response.get('etag'), '"asdf"')
   })
@@ -15,7 +15,7 @@ describe('response.etag=', () => {
   it('should not modify a weak etag', () => {
     const response = createResponse()
 
-    response.etag = 'W/"asdf"'
+    response.etag('W/"asdf"')
 
     assert.equal(response.get('etag'), 'W/"asdf"')
   })
@@ -23,26 +23,8 @@ describe('response.etag=', () => {
   it('should add quotes around an etag if necessary', () => {
     const response = createResponse()
 
-    response.etag = 'asdf'
+    response.etag('asdf')
 
     assert.equal(response.get('etag'), '"asdf"')
-  })
-})
-
-describe('response.etag', () => {
-  describe('with no etag present', () => {
-    it('should return "undefined"', () => {
-      const response = createResponse()
-
-      assert.equal(response.etag, undefined)
-    })
-  })
-
-  it('should return etag', () => {
-    const response = createResponse()
-
-    response.etag = '"asdf"'
-
-    assert.equal(response.etag, '"asdf"')
   })
 })

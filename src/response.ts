@@ -8,38 +8,45 @@ import { isStream, isString, isWritable, isObject } from './support/util'
 
 export default class Response {
   /**
+   * The response status code
+   */
+  public statusCode: number = 204
+
+  /**
+   * The response status message
+   */
+  public statusMessage: string = 'No Content'
+
+  /**
    * The response body
    */
   private _body: any = null
 
   /**
-   * The response status code
-   */
-  private _status: number = 204
-
-  /**
-   * The response status message
-   */
-  private _message: string = 'No Content'
-
-  /**
    * The response headers
    */
-  private _headers: OutgoingHttpHeaders = Object.create(null)
+  private _headers: OutgoingHttpHeaders = {}
+
+  /**
+   * Initialize a new response builder
+   * 
+   * @param body
+   */
+  constructor (body?: any) {
+    if (body != null) this.body = body
+  }
 
   /**
    * Create a response instance from the given content
    * 
-   * @param content
+   * @param content The response body
    */
   public static from (content?: any): Response {
     if (content instanceof Response) return content
 
-    let resp = new Response()
+    // TODO: should also accept an `Error` instance
 
-    if (content != null) resp.body = content
-
-    return resp
+    return new Response(content)
   }
 
   /**
@@ -49,80 +56,6 @@ export default class Response {
    */
   public get headers (): OutgoingHttpHeaders {
     return this._headers
-  }
-
-  /**
-   * Set the response status code
-   */
-  public set status (code: number) {
-    assert('number' === typeof code, 'The status code must be a number')
-    assert(code >= 100 && code <= 999, 'Invalid status code')
-
-    this._status = code
-    this._message = statuses.messageOf(code)
-
-    if (this.body && statuses.isEmpty(code)) this._clearBody()
-  }
-
-  /**
-   * Get the response status code
-   */
-  public get status (): number {
-    return this._status
-  }
-
-  /**
-   * Set the response status message
-   */
-  public set message (value: string) {
-    this._message = value
-  }
-
-  /**
-   * Get the response status message
-   */
-  public get message (): string {
-    return this._message
-  }
-
-  /**
-   * Set `Content-Type` response header.
-   * 
-   * Will add the the charset if not present.
-   * 
-   * Examples:
-   * 
-   *     response.type = 'application/json'
-   *     response.type = '.html'
-   *     response.type = 'html'
-   *     response.type = 'json'
-   *     response.type = 'png'
-   */
-  public set type (value: string) {
-    let type = ct.normalize(value)
-
-    if (type) this.set('Content-Type', type)
-  }
-
-  /**
-   * Return the response mime type void of the "charset" parameter, or undefined
-   */
-  public get type (): string {
-    return ct.extract(this.get('Content-Type') as string) as string
-  }
-
-  /**
-   * Set `Content-Length` reponse header
-   */
-  public set length (value: number) {
-    this.set('Content-Length', value)
-  }
-
-  /**
-   * Get the response content length or NaN otherwise.
-   */
-  public get length (): number {
-    return this.get('Content-Length') as number || cl.from(this.body)
   }
 
   /**
@@ -138,7 +71,10 @@ export default class Response {
   public set body (value: any) {
     // empty body
     if (value == null) {
-      if (!statuses.isEmpty(this.status)) this.status = 204
+      if (!statuses.isEmpty(this.statusCode)) {
+        this.statusMessage = 'No Content'
+        this.statusCode = 204
+      }
 
       this._clearBody()
       return
@@ -147,7 +83,8 @@ export default class Response {
     this._body = value
 
     // status code
-    this.status = 200
+    this.statusCode = 200
+    this.statusMessage = 'OK'
 
     // content type
     if (!this.has('Content-Type')) {
@@ -156,19 +93,55 @@ export default class Response {
   }
 
   /**
-   * Set the `Last-Modified` response header
+   * Set the response status code
    */
-  public set lastModified (value: Date) {
-    this.set('Last-Modified', value.toUTCString())
+  public status (code: number): this {
+    assert('number' === typeof code, 'The status code must be a number')
+    assert(code >= 100 && code <= 999, 'Invalid status code')
+
+    if (this.body && statuses.isEmpty(code)) this._clearBody()
+
+    this.statusMessage = statuses.messageOf(code)
+    this.statusCode = code
+
+    return this
   }
 
   /**
-   * Get the `Last-Modified` date, or undefined if not present
+   * Set `Content-Type` response header.
+   * 
+   * Will add the the charset if not present.
+   * 
+   * Examples:
+   * 
+   *     response.type('application/json')
+   *     response.type('.html')
+   *     response.type('html')
+   *     response.type('json')
+   *     response.type('png')
    */
-  public get lastModified (): Date {
-    let date = this.get('Last-Modified') as string
+  public type (value: string): this {
+    let type = ct.normalize(value)
 
-    return date ? new Date(date) : undefined as any
+    if (!type) return this
+    
+    return this.set('Content-Type', type)
+  }
+
+  /**
+   * Set `Content-Length` reponse header
+   */
+  public length (value: number): this {
+    return this.set('Content-Length', value)
+  }
+
+  /**
+   * Set the `Last-Modified` response header
+   */
+  public lastModified (value: string | Date): this {
+    if (isString(value)) value = new Date(value)
+
+    return this.set('Last-Modified', value.toUTCString())
   }
 
   /**
@@ -178,41 +151,25 @@ export default class Response {
    * 
    * Examples:
    * 
-   *     response.etag = 'md5hashsum'
-   *     response.etag = '"md5hashsum"'
-   *     response.etag = 'W/"123456789"'
+   *     response.etag('md5hashsum')
+   *     response.etag('"md5hashsum"')
+   *     response.etag('W/"123456789"')
    */
-  public set etag (value: string) {
+  public etag (value: string): this {
     if (!/^(W\/)?"/.test(value)) value = `"${value}"`
 
-    this.set('ETag', value)
-  }
-
-  /**
-   * Get the `ETag` of the response.
-   */
-  public get etag (): string {
-    return this.get('ETag') as string
+    return this.set('ETag', value)
   }
 
   /**
    * Set the `Location` response header
    */
-  public set location (url: string) {
-    this.set('Location', encodeURI(url))
-  }
-
-  /**
-   * Get the `Location` response header
-   */
-  public get location (): string {
-    return this.get('Location') as string
+  public location (url: string): this {
+    return this.set('Location', encodeURI(url))
   }
 
   /**
    * Append `field` to the `Vary` header
-   * 
-   * @param headers
    */
   public vary (...headers: string[]): this {
     // match all
@@ -350,7 +307,7 @@ export default class Response {
    * @param headers
    */
   public reset (headers?: { [field: string]: string | number | string[] }): this {
-    this._headers = Object.create(null)
+    this._headers = {}
 
     if (headers) this.set(headers)
 
@@ -366,14 +323,13 @@ export default class Response {
     // socket not writable
     if (!isWritable(res)) return
 
-    let { body: content, status } = this
+    let { body: content, statusCode, statusMessage } = this
 
     if (!res.headersSent) {
-      // FIXME: `res.writeHead` is slow
-      // res.writeHead(status, this.message, this.headers)
+      // res.writeHead(statusCode, statusMessage, this.headers) is slow
 
-      res.statusCode = status
-      res.statusMessage = this.message
+      res.statusCode = statusCode
+      res.statusMessage = statusMessage
 
       for (let field in this.headers) {
         res.setHeader(field, this.headers[field] as any)
@@ -381,7 +337,7 @@ export default class Response {
     }
 
     // ignore body
-    if (statuses.isEmpty(status)) return res.end()
+    if (statuses.isEmpty(statusCode)) return res.end()
 
     // stream
     if (isStream(content)) {
@@ -391,8 +347,8 @@ export default class Response {
 
     // status body
     if (content == null) {
-      content = this.message || String(status)
-      this.set('Content-Type', 'text/plain; charset=utf-8')
+      content = statusMessage || String(statusCode)
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
     }
 
     // json
@@ -407,7 +363,7 @@ export default class Response {
   /**
    * Clear the response body and remove the content headers
    */
-  private _clearBody () {
+  private _clearBody (): void {
     this.remove('Transfer-Encoding')
     this.remove('Content-Length')
     this.remove('Content-type')

@@ -8,25 +8,15 @@ describe('response status message manipulation', () => {
     it('should get the status message', () => {
       let response = createResponse()
 
-      assert.equal(response.message, 'No Content')
+      assert.equal(response.statusMessage, 'No Content')
     })
 
     it('should default to status code', () => {
       let response = createResponse()
 
-      response.status = 200
+      response.status(200)
 
-      assert.equal(response.message, 'OK')
-    })
-  })
-
-  describe('response.message=', () => {
-    it('should set the status message', () => {
-      let response = createResponse()
-
-      response.message = 'OK'
-
-      assert.equal(response.message, 'OK')
+      assert.equal(response.statusMessage, 'OK')
     })
   })
 })

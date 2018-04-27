@@ -7,29 +7,29 @@ describe('response.body=', () => {
   it('should set the status code to 200', () => {
     let response = createResponse()
 
-    response.status = 100
+    response.status(100)
     response.body = 'hello'
 
-    assert.equal(response.status, 200)
+    assert.equal(response.statusCode, 200)
   })
 
   describe('when a `Content-Type` is already set', () => {
     it('should not override the type', () => {
       let response = createResponse()
 
-      response.type = 'text'
+      response.type('text')
       response.body = '<p>Hello</p>'
 
-      assert.equal(response.type, 'text/plain')
+      assert.equal(response.get('Content-Type'), 'text/plain; charset=utf-8')
     })
 
     it('should not override it when the body is an object', () => {
       let response = createResponse()
 
-      response.type = 'application/foo.bar+json'
+      response.type('application/foo.bar+json')
       response.body = { 'foo': 'bar' }
 
-      assert.equal(response.type, 'application/foo.bar+json')
+      assert.equal(response.get('Content-Type'), 'application/foo.bar+json')
     })
   })
 
@@ -69,7 +69,7 @@ describe('response.body=', () => {
 
       response.body = { foo: 'bar' }
 
-      assert.equal(response.type, 'application/json')
+      assert.equal(response.get('Content-Type'), 'application/json')
     })
   })
 })

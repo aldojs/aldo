@@ -7,7 +7,7 @@ describe('response.is(type)', () => {
   it('should ignore params', () => {
     const response = createResponse()
 
-    response.type = 'text/html; charset=utf-8'
+    response.type('text/html; charset=utf-8')
 
     assert.equal(response.is('text/*'), 'text/html')
   })
@@ -25,7 +25,7 @@ describe('response.is(type)', () => {
     it('should return the type', () => {
       const response = createResponse()
 
-      response.type = 'text/html; charset=utf-8'
+      response.type('text/html; charset=utf-8')
 
       assert.equal(response.is(), 'text/html')
     })
@@ -35,7 +35,7 @@ describe('response.is(type)', () => {
     it('should return the type or false', () => {
       const response = createResponse()
 
-      response.type = 'image/png'
+      response.type('image/png')
 
       assert.equal(response.is('png'), 'png')
       assert.equal(response.is('.png'), '.png')
@@ -55,7 +55,7 @@ describe('response.is(type)', () => {
     it('should return the first match or false', () => {
       const response = createResponse()
 
-      response.type = 'image/png'
+      response.type('image/png')
 
       assert.equal(response.is('png'), 'png')
       assert.equal(response.is('.png'), '.png')
@@ -80,7 +80,7 @@ describe('response.is(type)', () => {
     it('should match "urlencoded"', () => {
       const response = createResponse()
 
-      response.type = 'application/x-www-form-urlencoded'
+      response.type('application/x-www-form-urlencoded')
 
       assert.equal(response.is('urlencoded'), 'urlencoded')
       assert.equal(response.is('json', 'urlencoded'), 'urlencoded')
