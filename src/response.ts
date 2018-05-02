@@ -44,7 +44,7 @@ export default class Response {
   public static from (content?: any): Response {
     if (content instanceof Response) return content
 
-    // TODO: should also accept an `Error` instance
+    if (content instanceof Error) return _fromError(content)
 
     return new Response(content)
   }
@@ -319,7 +319,7 @@ export default class Response {
    * 
    * @param res
    */
-  public send (res: ServerResponse): void {
+  public end (res: ServerResponse): void {
     // socket not writable
     if (!isWritable(res)) return
 
@@ -369,4 +369,16 @@ export default class Response {
     this.remove('Content-type')
     this._body = null
   }
+}
+
+/**
+ * Create a response instance from the given error object
+ * 
+ * @param obj The error object
+ * @private
+ */
+function _fromError (obj: { expose?: boolean, message: string, statusCode?: number, headers?: { [key: string]: any } }): Response {
+  let body = obj.expose ? obj.message : 'Internal Server Error'
+
+  return new Response(body).status(obj.statusCode || 500).set(obj.headers || {})
 }

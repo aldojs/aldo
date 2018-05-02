@@ -56,13 +56,11 @@ export default class Application {
     let dispatch = compose(this._middlewares)
 
     return (req, res) => {
+      let send = (content: any) => Response.from(content).end(res)
       let ctx = this._context.create(new Request(req, this._options))
 
       debug(`dispatching: ${req.method} ${req.url}`)
-
-      setImmediate(() => {
-        dispatch(ctx).then((content) => Response.from(content).send(res))
-      })
+      setImmediate(() => dispatch(ctx).then(send, send))
     }
   }
 
