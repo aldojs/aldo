@@ -33,7 +33,7 @@ describe('response.body=', () => {
     })
   })
 
-  describe('when the body is a string', () => {
+  describe.skip('when the body is a string', () => {
     it('should default to text', () => {
       let response = createResponse()
 
@@ -43,7 +43,7 @@ describe('response.body=', () => {
     })
   })
 
-  describe('when the body is html', () => {
+  describe.skip('when the body is html', () => {
     it('should default to html', () => {
       const response = createResponse()
 
@@ -53,7 +53,7 @@ describe('response.body=', () => {
     })
   })
 
-  describe('when the body is a buffer', () => {
+  describe.skip('when the body is a buffer', () => {
     it('should default to an octet stream', () => {
       let response = createResponse()
 
@@ -63,13 +63,13 @@ describe('response.body=', () => {
     })
   })
 
-  describe('when an object is given', () => {
+  describe.skip('when an object is given', () => {
     it('should default to json', () => {
       let response = createResponse()
 
       response.body = { foo: 'bar' }
 
-      assert.equal(response.get('Content-Type'), 'application/json')
+      assert.equal(response.get('Content-Type'), 'application/json; charset=utf-8')
     })
   })
 })

@@ -1,6 +1,7 @@
 
 import { Stream } from 'stream'
 import { ServerResponse } from 'http'
+import { Http2ServerResponse } from 'http2'
 
 /**
  * Check if the argument is a string
@@ -32,9 +33,9 @@ export function isStream (obj: any): obj is Stream {
 /**
  * Check if the outgoing response is yet writable
  * 
- * @param res
+ * @param res The server response stream
  */
-export function isWritable (res: ServerResponse): boolean {
+export function isWritable (res: ServerResponse | Http2ServerResponse): boolean {
   // can't write any more after response finished
   if (res.finished) return false
 

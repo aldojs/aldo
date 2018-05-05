@@ -48,5 +48,5 @@ export function from (content: any): string {
   }
 
   // json
-  return 'application/json'
+  return 'application/json; charset=utf-8'
 }

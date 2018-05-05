@@ -1,10 +1,9 @@
 
 import * as assert from 'assert'
 import * as ct from './support/content-type'
-import * as cl from './support/content-length'
 import * as statuses from './support/status-code'
 import { OutgoingHttpHeaders, ServerResponse } from 'http'
-import { isStream, isString, isWritable, isObject } from './support/util'
+import { isStream, isString, isObject, isWritable } from './support/util'
 
 export default class Response {
   /**
@@ -76,7 +75,7 @@ export default class Response {
         this.statusCode = 204
       }
 
-      this._clearBody()
+      this._body = null
       return
     }
 
@@ -85,11 +84,6 @@ export default class Response {
     // status code
     this.statusCode = 200
     this.statusMessage = 'OK'
-
-    // content type
-    if (!this.has('Content-Type')) {
-      this.set('Content-Type', ct.from(value))
-    }
   }
 
   /**
@@ -99,7 +93,7 @@ export default class Response {
     assert('number' === typeof code, 'The status code must be a number')
     assert(code >= 100 && code <= 999, 'Invalid status code')
 
-    if (this.body && statuses.isEmpty(code)) this._clearBody()
+    if (this._body && statuses.isEmpty(code)) this._body = null
 
     this.statusMessage = statuses.messageOf(code)
     this.statusCode = code
@@ -197,6 +191,13 @@ export default class Response {
   }
 
   /**
+   * Append to the `Set-Cookie` header
+   */
+  public setCookie (cookie: string): this {
+    return this.append('Set-Cookie', cookie)
+  }
+
+  /**
    * Check if the incoming request contains the "Content-Type"
    * header field, and it contains any of the give mime `type`s.
    * 
@@ -224,7 +225,7 @@ export default class Response {
    * 
    * Examples:
    * 
-   *    response.set({ Accept: 'text/plain', 'X-API-Key': 'tobi' })
+   *    response.set({ 'Accept': 'text/plain', 'X-API-Key': 'tobi' })
    * 
    * @param headers
    */
@@ -320,24 +321,45 @@ export default class Response {
    * @param res
    */
   public end (res: ServerResponse): void {
-    // socket not writable
+    // writable
     if (!isWritable(res)) return
 
-    let { body: content, statusCode, statusMessage } = this
+    let { body: content, headers, statusCode, statusMessage } = this
 
-    if (!res.headersSent) {
-      // res.writeHead(statusCode, statusMessage, this.headers) is slow
+    // status
+    res.statusCode = statusCode
+    res.statusMessage = statusMessage
 
-      res.statusCode = statusCode
-      res.statusMessage = statusMessage
-
-      for (let field in this.headers) {
-        res.setHeader(field, this.headers[field] as any)
-      }
+    // headers
+    for (let field in headers) {
+      res.setHeader(field, headers[field] as any)
     }
 
     // ignore body
-    if (statuses.isEmpty(statusCode)) return res.end()
+    if (statuses.isEmpty(statusCode)) {
+      res.removeHeader('Transfer-Encoding')
+      res.removeHeader('Content-Length')
+      res.removeHeader('Content-type')
+      res.end()
+      return
+    }
+
+    // status body
+    if (content == null) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      res.end(statusMessage || String(statusCode))
+      return
+    }
+
+    // content type
+    if (!res.hasHeader('Content-Type')) {
+      res.setHeader('Content-Type', ct.from(content))
+    }
+
+    // string or buffer
+    if (isString(content) || Buffer.isBuffer(content)) {
+      return res.end(content)
+    }
 
     // stream
     if (isStream(content)) {
@@ -345,29 +367,8 @@ export default class Response {
       return
     }
 
-    // status body
-    if (content == null) {
-      content = statusMessage || String(statusCode)
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-    }
-
     // json
-    if (! (isString(content) || Buffer.isBuffer(content))) {
-      content = JSON.stringify(content)
-    }
-
-    // terminate
-    res.end(content)
-  }
-
-  /**
-   * Clear the response body and remove the content headers
-   */
-  private _clearBody (): void {
-    this.remove('Transfer-Encoding')
-    this.remove('Content-Length')
-    this.remove('Content-type')
-    this._body = null
+    res.end(JSON.stringify(content))
   }
 }
 
@@ -377,7 +378,7 @@ export default class Response {
  * @param obj The error object
  * @private
  */
-function _fromError (obj: { expose?: boolean, message: string, statusCode?: number, headers?: { [key: string]: any } }): Response {
+function _fromError (obj: any): Response {
   let body = obj.expose ? obj.message : 'Internal Server Error'
 
   return new Response(body).status(obj.statusCode || 500).set(obj.headers || {})
