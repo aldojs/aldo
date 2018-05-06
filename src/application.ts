@@ -34,7 +34,7 @@ export default class Application {
    *
    * @param options
    */
-  constructor (options: { proxy?: boolean } = {}) {
+  public constructor (options: { proxy?: boolean } = {}) {
     this._options = options
   }
 
@@ -43,7 +43,7 @@ export default class Application {
    *
    * @param fn
    */
-  use (fn: Middleware) {
+  public use (fn: Middleware) {
     assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
     debug(`use middleware: ${fn.name || '<anonymous>'}`)
     this._middlewares.push(fn)
@@ -53,7 +53,7 @@ export default class Application {
   /**
    * Return a request listener
    */
-  callback (): (req: IncomingMessage, res: ServerResponse) => void {
+  public callback (): (req: IncomingMessage, res: ServerResponse) => void {
     let dispatch = compose(this._middlewares)
 
     return (req, res) => {
@@ -72,7 +72,7 @@ export default class Application {
    * @param prop
    * @param fn
    */
-  bind (prop: string, fn: (ctx: Context) => any) {
+  public bind (prop: string, fn: (ctx: Context) => any) {
     assert(typeof fn === 'function', `Expect a function but got: ${typeof fn}.`)
     debug(`set a per-request context property: ${prop}`)
     this._context.bind(prop, fn)
@@ -85,7 +85,7 @@ export default class Application {
    * @param prop
    * @param value
    */
-  set (prop: string, value: any) {
+  public set (prop: string, value: any) {
     debug(`set a shared context property: ${prop}`)
     this._context.set(prop, value)
     return this
@@ -96,7 +96,7 @@ export default class Application {
    *
    * @param prop
    */
-  get (prop: string): any {
+  public get (prop: string): any {
     return this._context.get(prop)
   }
 
@@ -105,7 +105,7 @@ export default class Application {
    *
    * @param prop
    */
-  has (prop: string): boolean {
+  public has (prop: string): boolean {
     return this._context.has(prop)
   }
 
@@ -114,7 +114,7 @@ export default class Application {
    *
    *     http.createServer(app.callback()).listen(...args)
    */
-  listen (): Server {
+  public listen (): Server {
     return createServer(this.callback()).listen(...arguments)
   }
 
