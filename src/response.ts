@@ -29,10 +29,14 @@ export default class Response {
   /**
    * Initialize a new response builder
    * 
-   * @param body
+   * @param content
    */
-  constructor (body?: any) {
-    if (body != null) this.body = body
+  constructor (content?: any) {
+    if (content != null) {
+      this._body = content
+      this.statusCode = 200
+      this.statusMessage = 'OK'
+    }
   }
 
   /**
@@ -65,35 +69,11 @@ export default class Response {
   }
 
   /**
-   * Set the response body
-   */
-  public set body (value: any) {
-    // empty body
-    if (value == null) {
-      if (!statuses.isEmpty(this.statusCode)) {
-        this.statusMessage = 'No Content'
-        this.statusCode = 204
-      }
-
-      this._body = null
-      return
-    }
-
-    this._body = value
-
-    // status code
-    this.statusCode = 200
-    this.statusMessage = 'OK'
-  }
-
-  /**
    * Set the response status code
    */
   public status (code: number): this {
     assert('number' === typeof code, 'The status code must be a number')
     assert(code >= 100 && code <= 999, 'Invalid status code')
-
-    if (this._body && statuses.isEmpty(code)) this._body = null
 
     this.statusMessage = statuses.messageOf(code)
     this.statusCode = code

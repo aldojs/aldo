@@ -20,17 +20,6 @@ describe('response.status(code)', () => {
     assert.equal(response.statusMessage, 'OK')
   })
 
-  describe('when empty responses code', () => {
-    it('should clear the response body', () => {
-      let response = createResponse()
-
-      response.body = 'cleared'
-      response.status(204)
-
-      assert.equal(response.body, null)
-    })
-  })
-
   describe('when an non numeric status code is given', () => {
     it('should throw', () => {
       let response = createResponse()

@@ -4,6 +4,6 @@ import Response from '../../src/response'
 /**
  * 
  */
-export function createResponse () {
-  return new Response()
+export function createResponse (body?: any) {
+  return new Response(body)
 }

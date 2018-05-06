@@ -327,11 +327,6 @@ export class Request {
 
 export class Response {
   /**
-   * The response body
-   */
-  body: any;
-
-  /**
    * The status code
    */
   statusCode: number;
@@ -356,6 +351,11 @@ export class Response {
   static from (content: any): Response;
 
   /**
+   * The response body
+   */
+  readonly body: any;
+
+  /**
    * Get the response headers
    * 
    * Shortcut to `response.stream.getHeaders()`
@@ -364,6 +364,8 @@ export class Response {
 
   /**
    * Set the response status code
+   * 
+   * @throws `AssertionError` if the code is invalid
    */
   status(code: number): this;
 
