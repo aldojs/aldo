@@ -5,18 +5,19 @@ import Response from './response'
 import { setImmediate } from 'timers'
 import * as compose from 'aldo-compose'
 import * as createDebugger from 'debug'
-import ContextBuilder, { Context } from './context'
+import ContextFactory from 'aldo-context'
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
 
 const debug = createDebugger('aldo:application')
 
-export type Middleware = compose.Middleware<Context>
+type Context = { [field: string]: any }
+type Middleware = compose.Middleware<Context>
 
 export default class Application {
   /**
    * Application context
    */
-  private _context = new ContextBuilder()
+  private _context = new ContextFactory()
 
   /**
    * Application middlewares
@@ -57,9 +58,10 @@ export default class Application {
 
     return (req, res) => {
       let send = (content: any) => Response.from(content).end(res)
-      let ctx = this._context.create(new Request(req, this._options))
+      let ctx = this._makeContext(new Request(req, this._options))
 
       debug(`dispatching: ${req.method} ${req.url}`)
+
       setImmediate(() => dispatch(ctx).then(send, send))
     }
   }
@@ -114,5 +116,18 @@ export default class Application {
    */
   listen (): Server {
     return createServer(this.callback()).listen(...arguments)
+  }
+
+  /**
+   * Create a request context store
+   * 
+   * @private
+   */
+  private _makeContext (request: Request): Context {
+    var ctx = this._context.create()
+
+    ctx.request = request
+
+    return ctx
   }
 }
