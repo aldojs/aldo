@@ -73,7 +73,7 @@ export default class Request {
    * The parsed `Content-Length` when present or NaN
    */
   public get length (): number {
-    var len = this.headers['content-length'] as string
+    let len = this.headers['content-length'] as string
 
     return len ? Number(len) : NaN
   }
@@ -91,7 +91,7 @@ export default class Request {
    */
   public get host (): string | undefined {
     if (this._trustProxy) {
-      let values = forwarded.parse(this.stream, 'x-forwarded-host')
+      let values = forwarded.parse(this, 'x-forwarded-host')
 
       if (values[0]) return values[0]
     }
@@ -110,7 +110,7 @@ export default class Request {
     if ((this.stream.connection as any).encrypted) return 'https'
 
     if (this._trustProxy) {
-      let values = forwarded.parse(this.stream, 'x-forwarded-proto')
+      let values = forwarded.parse(this, 'x-forwarded-proto')
 
       if (values[0]) return values[0]
     }
@@ -134,14 +134,14 @@ export default class Request {
    * where `proxy2` is the furthest down-stream.
    */
   public get ips (): string[] {
-    return this._trustProxy ? forwarded.parse(this.stream, 'x-forwarded-for') : []
+    return this._trustProxy ? forwarded.parse(this, 'x-forwarded-for') : []
   }
 
   /**
    * Remote IP address
    */
   public get ip (): string | undefined {
-    return this.ips[0] || this.stream.connection.remoteAddress
+    return this.ips[0] || (this.stream && this.stream.connection.remoteAddress)
   }
 
   /**
@@ -272,7 +272,7 @@ export default class Request {
    * @param types
    */
   public accept (...types: string[]): string | false | string[] {
-    return negotiator.accept(this.stream, types)
+    return negotiator.accept(this, types)
   }
 
   /**
@@ -290,10 +290,10 @@ export default class Request {
    *     this.acceptCharset('utf-16')
    *     // => false
    * 
-   * @param args
+   * @param charsets
    */
-  public acceptCharset (...args: string[]): string | false | string[] {
-    return negotiator.acceptCharset(this.stream, args)
+  public acceptCharset (...charsets: string[]): string | false | string[] {
+    return negotiator.acceptCharset(this, charsets)
   }
 
   /**
@@ -311,10 +311,10 @@ export default class Request {
    *     this.acceptEncoding('br')
    *     // => false
    * 
-   * @param args
+   * @param encodings
    */
-  public acceptEncoding (...args: string[]): string | false | string[] {
-    return negotiator.acceptEncoding(this.stream, args)
+  public acceptEncoding (...encodings: string[]): string | false | string[] {
+    return negotiator.acceptEncoding(this, encodings)
   }
 
   /**
@@ -332,9 +332,9 @@ export default class Request {
    *     this.acceptLanguage('fr')
    *     // => false
    * 
-   * @param args
+   * @param languages
    */
-  public acceptLanguage (...args: string[]): string | false | string[] {
-    return negotiator.acceptLanguage(this.stream, args)
+  public acceptLanguage (...languages: string[]): string | false | string[] {
+    return negotiator.acceptLanguage(this, languages)
   }
 }

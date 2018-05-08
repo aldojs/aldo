@@ -23,7 +23,7 @@ describe('request.acceptEncoding()', () => {
         const request = createRequest()
 
         assert.deepEqual(request.acceptEncoding(), ['identity'])
-        assert.equal(request.acceptEncoding('gzip', 'deflate', 'identity'), 'identity')
+        assert.equal(request.acceptEncoding('gzip', 'identity'), 'identity')
       })
     })
   })

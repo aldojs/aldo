@@ -1,6 +1,7 @@
 
+import { isString } from './util'
 import * as mime from 'mime-types'
-import { IncomingMessage } from 'http'
+import { IncomingHttpHeaders } from 'http'
 
 type Accept = { value: string, weight: number }
 
@@ -11,7 +12,7 @@ const PARSE_RE = /^\s*([^\s;]+)\s*(?:;(.*))?$/
  * @param req
  * @param preferences
  */
-export function accept (req: IncomingMessage, preferences: string[]): string | false | string[] {
+export function accept (req: { headers: IncomingHttpHeaders }, preferences: string[]): string | false | string[] {
   var mediaTypes = _parse(req, 'accept', ['*/*'])
 
   // no types, return the first preferred type
@@ -32,7 +33,7 @@ export function accept (req: IncomingMessage, preferences: string[]): string | f
  * @param req
  * @param preferences
  */
-export function acceptCharset (req: any, preferences: string[]): string | false | string[] {
+export function acceptCharset (req: { headers: IncomingHttpHeaders }, preferences: string[]): string | false | string[] {
   return _match(_parse(req, 'accept-charset'), preferences)
 }
 
@@ -41,13 +42,11 @@ export function acceptCharset (req: any, preferences: string[]): string | false 
  * @param req
  * @param preferences
  */
-export function acceptEncoding (req: any, preferences: string[]): string | false | string[] {
+export function acceptEncoding (req: { headers: IncomingHttpHeaders }, preferences: string[]): string | false | string[] {
   var encodings = _parse(req, 'accept-encoding', ['identity'])
 
   // https://tools.ietf.org/html/rfc7231#section-5.3.4
-  if (!encodings.includes('identity')) {
-    req.headers['accept-encoding'].push('identity')
-  }
+  if (!encodings.includes('identity')) encodings.push('identity')
 
   return _match(encodings, preferences)
 }
@@ -57,7 +56,7 @@ export function acceptEncoding (req: any, preferences: string[]): string | false
  * @param req
  * @param preferences
  */
-export function acceptLanguage (req: any, preferences: string[]): string | false | string[] {
+export function acceptLanguage (req: { headers: IncomingHttpHeaders }, preferences: string[]): string | false | string[] {
   return _match(_parse(req, 'accept-language'), preferences)
 }
 
@@ -89,12 +88,14 @@ function _normalize (type: string): string {
  * @param defaultValue
  * @private
  */
-function _parse ({ headers }: any, header: string, defaultValue = ['*']): string[] {
-  if (typeof headers[header] === 'string') {
-    headers[header] = _parseAccept(headers[header])
+function _parse ({ headers }: { headers: IncomingHttpHeaders }, header: string, defaultValue = ['*']): string[] {
+  let value = headers[header]
+
+  if (isString(value)) {
+    value = headers[header] = _parseAccept(value)
   }
 
-  return headers[header] || (headers[header] = defaultValue)
+  return value || (headers[header] = defaultValue)
 }
 
 /**
@@ -154,9 +155,7 @@ function _matchType (accepted: string, type: string): boolean {
  * @param header
  * @private
  */
-function _parseAccept (header: string, defaultValue = ['*']): string[] {
-  if (!header) return defaultValue
-
+function _parseAccept (header: string): string[] {
   return header
     .split(',')
     .map(_parsePart)

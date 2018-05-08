@@ -1,5 +1,5 @@
 
-import { IncomingMessage } from 'http'
+import { IncomingHttpHeaders } from 'http'
 
 const SEPARATOR_RE = /\s*,\s*/
 
@@ -9,7 +9,7 @@ const SEPARATOR_RE = /\s*,\s*/
  * @param req
  * @param field
  */
-export function parse ({ headers }: IncomingMessage, field: string): string[] {
+export function parse ({ headers }: { headers: IncomingHttpHeaders }, field: string): string[] {
   var value = headers[field] || ''
 
   // parse
