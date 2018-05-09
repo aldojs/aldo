@@ -2,8 +2,8 @@
 import * as assert from 'assert'
 import * as ct from './support/content-type'
 import * as statuses from './support/status-code'
+import { isObject, isString } from './support/util'
 import { OutgoingHttpHeaders, ServerResponse } from 'http'
-import { isStream, isString, isObject, isWritable } from './support/util'
 
 export default class Response {
   /**
@@ -19,12 +19,12 @@ export default class Response {
   /**
    * The response body
    */
-  private _body: any = null
+  public body: any = null
 
   /**
    * The response headers
    */
-  private _headers: OutgoingHttpHeaders = {}
+  public headers: OutgoingHttpHeaders = {}
 
   /**
    * Initialize a new response builder
@@ -33,49 +33,26 @@ export default class Response {
    */
   constructor (content?: any) {
     if (content != null) {
-      this._body = content
+      this.body = content
       this.statusCode = 200
       this.statusMessage = 'OK'
     }
   }
 
   /**
-   * Create a response instance from the given content
-   * 
-   * @param content The response body
-   */
-  public static from (content?: any): Response {
-    if (content instanceof Response) return content
-
-    if (content instanceof Error) return _fromError(content)
-
-    return new Response(content)
-  }
-
-  /**
-   * Response headers
-   * 
-   * Shortcut to `this.stream.getHeaders()`
-   */
-  public get headers (): OutgoingHttpHeaders {
-    return this._headers
-  }
-
-  /**
-   * Get the response body
-   */
-  public get body (): any {
-    return this._body
-  }
-
-  /**
    * Set the response status code
+   * 
+   * @param code The status code
+   * @param message The status message
    */
-  public status (code: number): this {
+  public status (code: number, message?: string): this {
     assert('number' === typeof code, 'The status code must be a number')
     assert(code >= 100 && code <= 999, 'Invalid status code')
 
-    this.statusMessage = statuses.messageOf(code)
+    // no content status code
+    if (this.body && statuses.isEmpty(code)) this.body = null
+
+    this.statusMessage = message || statuses.messageOf(code)
     this.statusCode = code
 
     return this
@@ -97,9 +74,11 @@ export default class Response {
   public type (value: string): this {
     let type = ct.normalize(value)
 
-    if (!type) return this
+    if (type) {
+      this.set('Content-Type', type)
+    }
     
-    return this.set('Content-Type', type)
+    return this
   }
 
   /**
@@ -287,79 +266,19 @@ export default class Response {
    * 
    * @param headers
    */
-  public reset (headers?: { [field: string]: string | number | string[] }): this {
-    this._headers = {}
-
-    if (headers) this.set(headers)
-
+  public reset (headers: { [field: string]: string | number | string[] } = {}): this {
+    this.headers = headers
     return this
-  }
-
-  /**
-   * Send and end the response stream
-   * 
-   * @param res
-   */
-  public end (res: ServerResponse): void {
-    // writable
-    if (!isWritable(res)) return
-
-    let { body: content, headers, statusCode, statusMessage } = this
-
-    // status
-    res.statusCode = statusCode
-    res.statusMessage = statusMessage
-
-    // headers
-    for (let field in headers) {
-      res.setHeader(field, headers[field] as any)
-    }
-
-    // ignore body
-    if (statuses.isEmpty(statusCode)) {
-      res.removeHeader('Transfer-Encoding')
-      res.removeHeader('Content-Length')
-      res.removeHeader('Content-type')
-      res.end()
-      return
-    }
-
-    // status body
-    if (content == null) {
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-      res.end(statusMessage || String(statusCode))
-      return
-    }
-
-    // content type
-    if (!res.hasHeader('Content-Type')) {
-      res.setHeader('Content-Type', ct.from(content))
-    }
-
-    // string or buffer
-    if (isString(content) || Buffer.isBuffer(content)) {
-      return res.end(content)
-    }
-
-    // stream
-    if (isStream(content)) {
-      content.pipe(res)
-      return
-    }
-
-    // json
-    res.end(JSON.stringify(content))
   }
 }
 
 /**
- * Create a response instance from the given error object
+ * Ensure the given argument is a `Response` instance
  * 
- * @param obj The error object
- * @private
+ * @param response
  */
-function _fromError (obj: any): Response {
-  let body = obj.expose ? obj.message : 'Internal Server Error'
+export function ensureResponse (response: any): Response {
+  if (response instanceof Response) return response
 
-  return new Response(body).status(obj.statusCode || 500).set(obj.headers || {})
+  return new Response(response)
 }

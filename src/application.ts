@@ -1,17 +1,22 @@
 
 import Request from './request'
 import * as assert from 'assert'
-import Response from './response'
 import { setImmediate } from 'timers'
 import * as compose from 'aldo-compose'
 import * as createDebugger from 'debug'
 import ContextFactory from 'aldo-context'
+import Response, { ensureResponse } from './response'
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
 
 const debug = createDebugger('aldo:application')
 
-type Context = { [field: string]: any }
-type Middleware = compose.Middleware<Context>
+export interface Options {
+  proxy?: boolean
+}
+
+export type Context = { [field: string]: any }
+
+export type Middleware = compose.Middleware<Context>
 
 export default class Application {
   /**
@@ -27,14 +32,14 @@ export default class Application {
   /**
    * Application options
    */
-  private _options: object
+  private _options: Options
 
   /**
    * Initialize a new application
    *
    * @param options
    */
-  public constructor (options: { proxy?: boolean } = {}) {
+  public constructor (options: Options = {}) {
     this._options = options
   }
 
@@ -53,16 +58,15 @@ export default class Application {
   /**
    * Return a request listener
    */
-  public callback (): (req: IncomingMessage, res: ServerResponse) => void {
+  public callback (): (req: IncomingMessage) => Promise<Response> {
     let dispatch = compose(this._middlewares)
 
-    return (req, res) => {
-      let send = (content: any) => Response.from(content).end(res)
-      let ctx = this._makeContext(new Request(req, this._options))
+    return (req) => {
+      let ctx = this._makeContext(this._makeRequest(req))
 
       debug(`dispatching: ${req.method} ${req.url}`)
 
-      setImmediate(() => dispatch(ctx).then(send, send))
+      return dispatch(ctx).then(ensureResponse)
     }
   }
 
@@ -115,6 +119,7 @@ export default class Application {
    *     http.createServer(app.callback()).listen(...args)
    */
   public listen (): Server {
+    // TODO: Rewrite
     return createServer(this.callback()).listen(...arguments)
   }
 
@@ -129,5 +134,15 @@ export default class Application {
     ctx.request = request
 
     return ctx
+  }
+
+  /**
+   * Create a request instance
+   * 
+   * @private
+   */
+  private _makeRequest (req: IncomingMessage): any {
+    return req
+    // return new Request(req, this._options)
   }
 }
