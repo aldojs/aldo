@@ -29,18 +29,3 @@ export function isObject (obj: any): obj is { [x: string]: any } {
 export function isStream (obj: any): obj is Stream {
   return isObject(obj) && typeof obj.pipe === 'function'
 }
-
-/**
- * Check if the outgoing response is yet writable
- * 
- * @param res The server response stream
- */
-export function isWritable (res: ServerResponse | Http2ServerResponse): boolean {
-  // can't write any more after response finished
-  if (res.finished) return false
-
-  // pending writable outgoing response
-  if (!res.connection) return true
-
-  return res.connection.writable
-}

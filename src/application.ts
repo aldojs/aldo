@@ -1,18 +1,14 @@
 
 import Request from './request'
 import * as assert from 'assert'
-import { setImmediate } from 'timers'
+import Response from './response'
 import * as compose from 'aldo-compose'
 import * as createDebugger from 'debug'
 import ContextFactory from 'aldo-context'
-import Response, { ensureResponse } from './response'
-import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
+import { Http2ServerRequest } from 'http2'
+import { createServer, IncomingMessage, Server } from 'http'
 
 const debug = createDebugger('aldo:application')
-
-export interface Options {
-  proxy?: boolean
-}
 
 export type Context = { [field: string]: any }
 
@@ -30,20 +26,6 @@ export default class Application {
   private _middlewares: Middleware[] = []
 
   /**
-   * Application options
-   */
-  private _options: Options
-
-  /**
-   * Initialize a new application
-   *
-   * @param options
-   */
-  public constructor (options: Options = {}) {
-    this._options = options
-  }
-
-  /**
    * Use request middleware
    *
    * @param fn
@@ -58,7 +40,7 @@ export default class Application {
   /**
    * Return a request listener
    */
-  public callback (): (req: IncomingMessage) => Promise<Response> {
+  public callback (): (req: IncomingMessage | Http2ServerRequest) => Promise<Response> {
     let dispatch = compose(this._middlewares)
 
     return (req) => {
@@ -66,7 +48,7 @@ export default class Application {
 
       debug(`dispatching: ${req.method} ${req.url}`)
 
-      return dispatch(ctx).then(ensureResponse)
+      return dispatch(ctx).then(_ensureResponse)
     }
   }
 
@@ -128,7 +110,7 @@ export default class Application {
    * 
    * @private
    */
-  private _makeContext (request: Request): Context {
+  private _makeContext (request: any): Context {
     var ctx = this._context.create()
 
     ctx.request = request
@@ -141,8 +123,24 @@ export default class Application {
    * 
    * @private
    */
-  private _makeRequest (req: IncomingMessage): any {
-    return req
-    // return new Request(req, this._options)
+  private _makeRequest (req: IncomingMessage | Http2ServerRequest): Request {
+    let { url = '/', method = 'GET', headers, socket } = req
+    let instance = new Request(url, method, headers)
+
+    instance.connection = socket
+    instance.stream = req
+
+    return instance
   }
+}
+
+/**
+ * Ensure the given argument is a `Response` instance
+ * 
+ * @private
+ */
+function _ensureResponse (arg: any): Response {
+  if (arg instanceof Response) return arg
+
+  return new Response(arg)
 }

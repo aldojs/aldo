@@ -1,5 +1,7 @@
 
+import { Socket } from 'net'
 import * as url from './support/url'
+import { Http2ServerRequest } from 'http2'
 import * as ct from './support/content-type'
 import * as charset from './support/charset'
 import * as forwarded from './support/forwarded'
@@ -8,51 +10,62 @@ import { IncomingMessage, IncomingHttpHeaders } from 'http'
 
 export default class Request {
   /**
-   * The request parsed body
-   */
-  public body: any = null
-
-  /**
-   * Trust proxy headers
-   */
-  private _trustProxy: boolean
-
-  /**
-   * Contruct a new request instance
-   * 
-   * @param stream
-   * @param options
-   */
-  public constructor (public stream: IncomingMessage, options: { proxy?: boolean }) {
-    this._trustProxy = Boolean(options.proxy)
-  }
-
-  /**
-   * The incoming headers
-   */
-  public get headers (): IncomingHttpHeaders {
-    return this.stream.headers
-  }
-
-  /**
    * The URL path name
    */
-  public get url (): string {
-    return url.parse(this.stream).pathname || '/'
-  }
+  public url: string
 
   /**
    * The request method
    */
-  public get method (): string {
-    return this.stream.method || 'GET'
-  }
+  public method: string
+
+  /**
+   * The request parsed body
+   */
+  public body: any
 
   /**
    * The URL query string
    */
-  public get querystring (): string {
-    return url.parse(this.stream).query as string || ''
+  public querystring: string
+
+  /**
+   * The request headers
+   */
+  public headers: IncomingHttpHeaders = {}
+
+  /**
+   * The incoming request stream
+   */
+  public stream?: IncomingMessage | Http2ServerRequest
+
+  /**
+   * The connection socket
+   */
+  public connection?: Socket
+
+  /**
+   * Trust proxy headers
+   */
+  private _trustProxy: boolean = false
+
+  /**
+   * Contruct a new request instance
+   * 
+   * @param uri
+   * @param method
+   * @param headers
+   * @param body
+   */
+  public constructor (uri: string, method: string, headers = {}, body: any = null) {
+    let { pathname = '/', query = '' } = url.parse({ url: uri } as any)
+
+    this.body = body
+    this.method = method
+    this.url = pathname as string
+    this.querystring = query as string
+
+    Object.assign(this.headers, headers)
   }
 
   /**
@@ -107,7 +120,7 @@ export default class Request {
    * the "X-Forwarded-Proto" header will be trusted
    */
   public get protocol (): string {
-    if ((this.stream.connection as any).encrypted) return 'https'
+    if (this.connection && (this.connection as any).encrypted) return 'https'
 
     if (this._trustProxy) {
       let values = forwarded.parse(this, 'x-forwarded-proto')
@@ -116,13 +129,6 @@ export default class Request {
     }
 
     return 'http'
-  }
-
-  /**
-   * Origin of the URL
-   */
-  public get origin (): string {
-    return `${this.protocol}://${this.host || ''}`
   }
 
   /**
@@ -141,7 +147,17 @@ export default class Request {
    * Remote IP address
    */
   public get ip (): string | undefined {
-    return this.ips[0] || (this.stream && this.stream.connection.remoteAddress)
+    return this.ips[0] || (this.connection && this.connection.remoteAddress)
+  }
+
+  /**
+   * Trust or not the `X-Forwarded-*` headers
+   * 
+   * @param flag
+   */
+  trustProxy (flag = true): this {
+    this._trustProxy = flag
+    return this
   }
 
   /**

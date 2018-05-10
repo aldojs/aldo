@@ -1,9 +1,9 @@
 
 import * as assert from 'assert'
+import { OutgoingHttpHeaders } from 'http'
 import * as ct from './support/content-type'
 import * as statuses from './support/status-code'
 import { isObject, isString } from './support/util'
-import { OutgoingHttpHeaders, ServerResponse } from 'http'
 
 export default class Response {
   /**
@@ -270,15 +270,4 @@ export default class Response {
     this.headers = headers
     return this
   }
-}
-
-/**
- * Ensure the given argument is a `Response` instance
- * 
- * @param response
- */
-export function ensureResponse (response: any): Response {
-  if (response instanceof Response) return response
-
-  return new Response(response)
 }
