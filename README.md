@@ -90,4 +90,9 @@ This method is very useful, since it allows you to lazily (only when needed) att
 
 ## Response
 
-TODO
+The middleware output could be:
+- `strings` or `buffers` sent directly
+- `streams` which will be piped to the outgoing response
+- `null` or `undefind` as empty responses (By default with 204 status code)
+- `Response` instances which can be created with the context `response` property
+- otherwise, any other value will be serialized as `JSON`, with the proper `Content-Type` and `Content-Length`

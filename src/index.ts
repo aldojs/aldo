@@ -38,7 +38,7 @@ export class Application {
    * @public
    */
   public constructor () {
-    this.set('response', (body?: any) => new Response(body))
+    this._initializeContext()
   }
 
   /**
@@ -144,5 +144,14 @@ export class Application {
     ctx.request = request
 
     return ctx
+  }
+
+  /**
+   * Initialize the built-in context properties
+   * 
+   * @private
+   */
+  private _initializeContext () {
+    this._context.set('response', (body?: any) => new Response(body))
   }
 }
