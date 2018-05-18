@@ -1,4 +1,6 @@
 lib
+.todo
+.vscode
 
 # Logs
 logs
