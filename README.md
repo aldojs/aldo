@@ -56,7 +56,7 @@ app.use(async (ctx, next) => {
 ## Context
 
 The context object is a simple plain object with these properties:
-- `request` refers to the request object from `aldo-http` module
+- `request` refers to the incoming request object
 - `response` function to get a new `Response` instance each time called
 - Other fields defined with `.set(key, value)` or `.bind(key, getter)`
 

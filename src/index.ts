@@ -48,7 +48,7 @@ export class Application {
    * @public
    */
   public use (fn: Middleware) {
-    assert(typeof fn === 'function', `Expect a function but got: ${is(fn)}.`)
+    assert(is.function_(fn), `Expect a function but got: ${is(fn)}.`)
     debug(`use middleware: ${fn.name || '<anonymous>'}`)
     this._middlewares.push(fn)
     return this
@@ -77,7 +77,7 @@ export class Application {
    * @public
    */
   public bind (prop: string, fn: (ctx: Context) => any) {
-    assert(typeof fn === 'function', `Expect a function but got: ${is(fn)}.`)
+    assert(is.function_(fn), `Expect a function but got: ${is(fn)}.`)
     debug(`set a per-request context property: ${prop}`)
     this._context.bind(prop, fn)
     return this
@@ -152,6 +152,9 @@ export class Application {
    * @private
    */
   private _initializeContext () {
-    this._context.set('response', (body?: any) => new Response(body))
+    // Add the response factory
+    this._context.set('response', (body?: any) => {
+      return body instanceof Response ? body : new Response(body)
+    })
   }
 }
