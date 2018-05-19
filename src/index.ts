@@ -4,16 +4,13 @@ import is from '@sindresorhus/is'
 import * as createDebugger from 'debug'
 import { Middleware as IMiddleware, compose } from 'aldo-compose'
 import { ContextFactory, Context as IContext } from 'aldo-context'
-import { Request, createServer, Server, RequestHandler, Response } from 'aldo-http'
+import { Request, createServer, Server, RequestHandler } from 'aldo-http'
 
 const debug = createDebugger('aldo:application')
 
 export type Middleware = IMiddleware<Context>
 
-export type ResponseFactory = (body?: any) => Response
-
 export interface Context extends IContext {
-  response: ResponseFactory
   request: Request
 }
 
@@ -23,7 +20,7 @@ export class Application {
    * 
    * @private
    */
-  private _context = new ContextFactory<Context>()
+  private _context: ContextFactory<Context>
 
   /**
    * The middleware dispatcher
@@ -35,10 +32,11 @@ export class Application {
   /**
    * Initialize a new application
    * 
+   * @param context The context factory
    * @public
    */
-  public constructor () {
-    this._initializeContext()
+  public constructor (context = new ContextFactory<Context>()) {
+    this._context = context
   }
 
   /**
@@ -144,17 +142,5 @@ export class Application {
     ctx.request = request
 
     return ctx
-  }
-
-  /**
-   * Initialize the built-in context properties
-   * 
-   * @private
-   */
-  private _initializeContext () {
-    // Add the response factory
-    this._context.set('response', (body?: any) => {
-      return body instanceof Response ? body : new Response(body)
-    })
   }
 }
