@@ -1,7 +1,7 @@
 {
-  "name": "aldo",
+  "name": "aldo-application",
   "version": "1.0.0-alpha.0",
-  "description": "Fast micro framework for Node.js 8+",
+  "description": "Aldo's application package",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {
