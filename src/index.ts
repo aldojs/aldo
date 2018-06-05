@@ -1,42 +1,54 @@
 
-import * as assert from 'assert'
 import is from '@sindresorhus/is'
 import * as createDebugger from 'debug'
-import { Middleware as IMiddleware, compose } from 'aldo-compose'
-import { ContextFactory, Context as IContext } from 'aldo-context'
-import { Request, createServer, Server, RequestHandler } from 'aldo-http'
+import { Container } from './_container'
+import { Dispatcher, IMiddleware } from './_dispatcher'
 
 const debug = createDebugger('aldo:application')
 
+export interface IDispatcher {
+  dispatch (ctx: Context): any
+  use (fn: Middleware): void
+}
+
+export interface IContainer {
+  set (field: string, fn: Factory): any
+  has (field: string): boolean
+  get (field: string): any
+}
+
+export type Factory = (c: IContainer) => any
+
 export type Middleware = IMiddleware<Context>
 
-export interface Context extends IContext {
-  request: Request
+export type Context = {
+  [field: string]: any
 }
 
 export class Application {
   /**
-   * The context factory
+   * The service container
    * 
-   * @private
+   * @protected
    */
-  private _context: ContextFactory<Context>
+  protected _container: IContainer = new Container()
 
   /**
    * The middleware dispatcher
    * 
    * @private
    */
-  private _middlewares: Middleware[] = []
+  private _dispatcher: IDispatcher = new Dispatcher<Context>()
 
   /**
-   * Initialize a new application
+   * The context proxy handler
    * 
-   * @param context The context factory
-   * @public
+   * @protected
    */
-  public constructor (context = new ContextFactory<Context>()) {
-    this._context = context
+  protected _handler: object = {
+    get: (ctx: Context, prop: string) => {
+      return ctx[prop] || (ctx[prop] = this.get(prop))
+    }
   }
 
   /**
@@ -46,9 +58,12 @@ export class Application {
    * @public
    */
   public use (fn: Middleware) {
-    assert(is.function_(fn), `Expect a function but got: ${is(fn)}.`)
+    if (!is.function_(fn)) {
+      throw new TypeError(`Expect a function but got: ${is(fn)}.`)
+    }
+
     debug(`use middleware: ${fn.name || '<anonymous>'}`)
-    this._middlewares.push(fn)
+    this._dispatcher.use(fn)
     return this
   }
 
@@ -58,13 +73,19 @@ export class Application {
    * @param request
    * @public
    */
-  public callback (): RequestHandler {
-    let dispatch = compose(this._middlewares)
+  public callback () {
+    return (request: any) => this.handle(request)
+  }
 
-    return (request) => {
-      debug(`dispatching: ${request.method} ${request.url}`)
-      return dispatch(this._createContext(request))
-    }
+  /**
+   * Handle the incoming request and return the response
+   * 
+   * @param request The incoming request
+   * @public
+   */
+  public async handle (request: { url: string, method: string }): Promise<any> {
+    debug(`dispatching: ${request.method} ${request.url}`)
+    return this._dispatcher.dispatch(this._createContext(request))
   }
 
   /**
@@ -74,10 +95,13 @@ export class Application {
    * @param fn
    * @public
    */
-  public bind (prop: string, fn: (ctx: Context) => any) {
-    assert(is.function_(fn), `Expect a function but got: ${is(fn)}.`)
+  public bind (prop: string, fn: Factory) {
+    if (!is.function_(fn)) {
+      throw new TypeError(`Expect a function but got: ${is(fn)}.`)
+    }
+
     debug(`set a per-request context property: ${prop}`)
-    this._context.bind(prop, fn)
+    this._container.set(prop, fn)
     return this
   }
 
@@ -90,7 +114,7 @@ export class Application {
    */
   public set (prop: string, value: any) {
     debug(`set a shared context property: ${prop}`)
-    this._context.set(prop, value)
+    this._container.set(prop, () => value)
     return this
   }
 
@@ -101,7 +125,7 @@ export class Application {
    * @public
    */
   public get (prop: string): any {
-    return this._context.get(prop)
+    return this._container.get(prop)
   }
 
   /**
@@ -111,36 +135,16 @@ export class Application {
    * @public
    */
   public has (prop: string): boolean {
-    return this._context.has(prop)
-  }
-
-  /**
-   * Shorthand for:
-   *
-   *     createServer(app.callback()).start(...arguments)
-   * 
-   * @public
-   */
-  public async start (...args: any[]): Promise<Server> {
-    let server = createServer(this.callback())
-
-    await server.start(...args)
-
-    return server
+    return this._container.has(prop)
   }
 
   /**
    * Create a request context
    * 
    * @param request The incoming request
-   * @private
+   * @protected
    */
-  private _createContext (request: Request): Context {
-    let ctx = this._context.create()
-
-    // add the incoming request
-    ctx.request = request
-
-    return ctx
+  protected _createContext (request: any): Context {
+    return new Proxy({ request }, this._handler)
   }
 }
