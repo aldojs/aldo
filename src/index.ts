@@ -68,16 +68,6 @@ export class Application {
   }
 
   /**
-   * Get the request handler
-   * 
-   * @param request
-   * @public
-   */
-  public callback () {
-    return (request: any) => this.handle(request)
-  }
-
-  /**
    * Handle the incoming request and return the response
    * 
    * @param request The incoming request
