@@ -1,7 +1,7 @@
 {
   "name": "aldo-application",
   "version": "1.0.0-alpha.0",
-  "description": "Aldo's application package",
+  "description": "Aldo's core application",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {
@@ -13,14 +13,18 @@
     "lib"
   ],
   "engines": {
-    "node": ">=8.9"
+    "npm": ">=5",
+    "node": ">=8"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aldojs/aldo.git"
+    "url": "git+https://github.com/aldojs/application.git"
   },
   "keywords": [
     "aldo",
+    "context",
+    "service",
+    "container",
     "middleware",
     "dispatcher",
     "application"
@@ -43,9 +47,6 @@
   },
   "dependencies": {
     "@sindresorhus/is": "^0.9.0",
-    "aldo-http": "^1.0.0-alpha.2",
-    "aldo-compose": "^3.1.2",
-    "aldo-context": "^1.1.1",
     "debug": "^3.1.0"
   }
 }
