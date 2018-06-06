@@ -1,6 +1,4 @@
 
-import is from '@sindresorhus/is'
-
 export interface IMiddleware<T> {
   (input: T, next: () => any): any
 }

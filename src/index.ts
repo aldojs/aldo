@@ -79,53 +79,53 @@ export class Application {
   }
 
   /**
-   * Extend the app context by adding per instance property
+   * Register a binding in the container
    *
-   * @param prop
-   * @param fn
+   * @param name The binding name
+   * @param fn The factory function
    * @public
    */
-  public bind (prop: string, fn: Factory) {
+  public bind (name: string, fn: Factory) {
     if (!is.function_(fn)) {
       throw new TypeError(`Expect a function but got: ${is(fn)}.`)
     }
 
-    debug(`set a per-request context property: ${prop}`)
-    this._container.set(prop, fn)
+    debug(`set a per-request context property: ${name}`)
+    this._container.set(name, fn)
     return this
   }
 
   /**
-   * Extend the app context by adding shared properties
+   * Register a value as a shared binding in the container
    *
-   * @param prop
-   * @param value
+   * @param name The binding name
+   * @param value The shared value
    * @public
    */
-  public set (prop: string, value: any) {
-    debug(`set a shared context property: ${prop}`)
-    this._container.set(prop, () => value)
+  public set (name: string, value: any) {
+    debug(`set a shared context property: ${name}`)
+    this._container.set(name, () => value)
     return this
   }
 
   /**
-   * Get a value from the app context
+   * Resolve the given binding from the container
    *
-   * @param prop
+   * @param name The binding name
    * @public
    */
-  public get (prop: string): any {
-    return this._container.get(prop)
+  public get (name: string): any {
+    return this._container.get(name)
   }
 
   /**
    * Check if the prop is defined in the app context
    *
-   * @param prop
+   * @param name The binding name
    * @public
    */
-  public has (prop: string): boolean {
-    return this._container.has(prop)
+  public has (name: string): boolean {
+    return this._container.has(name)
   }
 
   /**

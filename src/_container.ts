@@ -22,10 +22,6 @@ export class Container {
     if (fn) return fn(this)
   }
 
-  public alias (name: string, field: string) {
-    this.set(name, this.get(field))
-  }
-
   /**
    * Set a factory by name
    * 
