@@ -25,29 +25,48 @@ export type Context = {
   [field: string]: any
 }
 
+export type ApplicationOptions = {
+  dispatcher?: IDispatcher
+  container?: IContainer
+}
+
 export class Application {
   /**
    * The service container
    * 
    * @protected
    */
-  protected _container: IContainer = new Container()
+  protected _container: IContainer
 
   /**
    * The middleware dispatcher
    * 
    * @private
    */
-  private _dispatcher: IDispatcher = new Dispatcher<Context>()
+  private _dispatcher: IDispatcher
 
   /**
    * The context proxy handler
    * 
    * @protected
    */
-  protected _handler: object = {
-    get: (ctx: Context, prop: string) => {
-      return ctx[prop] || (ctx[prop] = this.get(prop))
+  protected _handler: object
+
+  /**
+   * Initialize a new application instance
+   * 
+   * @param options The application options
+   * @constructor
+   * @public
+   */
+  public constructor ({ dispatcher, container }: ApplicationOptions) {
+    this._container = container || new Container()
+    this._dispatcher = dispatcher || new Dispatcher()
+
+    this._handler = {
+      get: (ctx: Context, prop: string) => {
+        return ctx[prop] || (ctx[prop] = this.get(prop))
+      }
     }
   }
 

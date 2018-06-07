@@ -17,7 +17,9 @@ export class Dispatcher<T> {
   /**
    * Initialize a new dispatcher instance
    * 
-   * @param stack the middleware stack
+   * @param stack The middleware stack
+   * @constructor
+   * @public
    */
   public constructor (stack: IMiddleware<T>[] = []) {
     this._middlewares = stack

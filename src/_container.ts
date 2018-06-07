@@ -8,7 +8,18 @@ export class Container {
    * 
    * @private
    */
-  private _factories = new Map<string, Function>()
+  private _factories: Map<string, Function>
+
+  /**
+   * Initialize a new container instance
+   * 
+   * @param map The factories map
+   * @constructor
+   * @public
+   */
+  public constructor (map = new Map()) {
+    this._factories = map
+  }
 
   /**
    * Invoke the factory and return its value
@@ -29,8 +40,9 @@ export class Container {
    * @param fn 
    * @public
    */
-  public set (name: string, fn: (c: Container) => any): void {
+  public set (name: string, fn: (c: Container) => any): this {
     this._factories.set(name, fn)
+    return this
   }
 
   /**
