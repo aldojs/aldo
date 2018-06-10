@@ -1,7 +1,6 @@
 
 import is from '@sindresorhus/is'
 import * as createDebugger from 'debug'
-import { Container } from './_container'
 import { Dispatcher, IMiddleware } from './_dispatcher'
 
 const debug = createDebugger('aldo:application')
@@ -11,23 +10,12 @@ export interface IDispatcher {
   use (fn: Middleware): void
 }
 
-export interface IContainer {
-  set (field: string, fn: Factory): any
-  has (field: string): boolean
-  get (field: string): any
-}
-
-export type Factory = (c: IContainer) => any
+export type Factory = (c: Context) => any
 
 export type Middleware = IMiddleware<Context>
 
 export type Context = {
   [field: string]: any
-}
-
-export type ApplicationOptions = {
-  dispatcher?: IDispatcher
-  container?: IContainer
 }
 
 export class Application {
@@ -36,7 +24,7 @@ export class Application {
    * 
    * @protected
    */
-  protected _container: IContainer
+  protected _factories = new Map<string, Factory>()
 
   /**
    * The middleware dispatcher
@@ -59,13 +47,18 @@ export class Application {
    * @constructor
    * @public
    */
-  public constructor ({ dispatcher, container }: ApplicationOptions) {
-    this._container = container || new Container()
-    this._dispatcher = dispatcher || new Dispatcher()
+  public constructor ( dispatcher: IDispatcher = new Dispatcher()) {
+    this._dispatcher = dispatcher
 
     this._handler = {
       get: (ctx: Context, prop: string) => {
-        return ctx[prop] || (ctx[prop] = this.get(prop))
+        if (ctx[prop] == null) {
+          let fn = this._factories.get(prop)
+
+          if (fn) ctx[prop] = fn(ctx)
+        }
+
+        return ctx[prop]
       }
     }
   }
@@ -78,7 +71,7 @@ export class Application {
    */
   public use (fn: Middleware) {
     if (!is.function_(fn)) {
-      throw new TypeError(`Expect a function but got: ${is(fn)}.`)
+      throw new TypeError(`Expect a function but got: ${is(fn)}`)
     }
 
     debug(`use middleware: ${fn.name || '<anonymous>'}`)
@@ -92,7 +85,7 @@ export class Application {
    * @param request The incoming request
    * @public
    */
-  public async handle (request: { url: string, method: string }): Promise<any> {
+  public handle (request: any): any {
     debug(`dispatching: ${request.method} ${request.url}`)
     return this._dispatcher.dispatch(this._createContext(request))
   }
@@ -106,11 +99,11 @@ export class Application {
    */
   public bind (name: string, fn: Factory) {
     if (!is.function_(fn)) {
-      throw new TypeError(`Expect a function but got: ${is(fn)}.`)
+      throw new TypeError(`Expect a function but got: ${is(fn)}`)
     }
 
-    debug(`set a per-request context property: ${name}`)
-    this._container.set(name, fn)
+    debug(`register a new binding: ${name}`)
+    this._factories.set(name, fn)
     return this
   }
 
@@ -122,8 +115,8 @@ export class Application {
    * @public
    */
   public set (name: string, value: any) {
-    debug(`set a shared context property: ${name}`)
-    this._container.set(name, () => value)
+    debug(`register a shared binding: ${name}`)
+    this._factories.set(name, () => value)
     return this
   }
 
@@ -134,17 +127,19 @@ export class Application {
    * @public
    */
   public get (name: string): any {
-    return this._container.get(name)
+    let fn = this._factories.get(name)
+
+    if (fn) return fn(this._createContext(null))
   }
 
   /**
-   * Check if the prop is defined in the app context
+   * Check if the binding name is already defined
    *
    * @param name The binding name
    * @public
    */
   public has (name: string): boolean {
-    return this._container.has(name)
+    return this._factories.has(name)
   }
 
   /**
