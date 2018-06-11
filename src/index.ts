@@ -1,13 +1,25 @@
 
 import is from '@sindresorhus/is'
 import * as createDebugger from 'debug'
+import { Container } from './_container'
 import { Dispatcher, IMiddleware } from './_dispatcher'
 
 const debug = createDebugger('aldo:application')
 
+export interface IContainer {
+  get (name: string, ctx: Context): any
+  set (name: string, fn: Factory): any
+  has (name: string): boolean
+}
+
 export interface IDispatcher {
   dispatch (ctx: Context): any
   use (fn: Middleware): void
+}
+
+export type ApplicationOptions = {
+  dispatcher?: IDispatcher
+  container?: IContainer
 }
 
 export type Factory = (c: Context) => any
@@ -24,21 +36,21 @@ export class Application {
    * 
    * @protected
    */
-  protected _factories = new Map<string, Factory>()
+  protected _container: IContainer
 
   /**
    * The middleware dispatcher
    * 
-   * @private
+   * @protected
    */
-  private _dispatcher: IDispatcher
+  protected _dispatcher: IDispatcher
 
   /**
    * The context proxy handler
    * 
    * @protected
    */
-  protected _handler: object
+  protected _handler: ProxyHandler<Context>
 
   /**
    * Initialize a new application instance
@@ -47,18 +59,13 @@ export class Application {
    * @constructor
    * @public
    */
-  public constructor ( dispatcher: IDispatcher = new Dispatcher()) {
-    this._dispatcher = dispatcher
+  public constructor ({ dispatcher, container }: ApplicationOptions = {}) {
+    this._container = container || new Container()
+    this._dispatcher = dispatcher || new Dispatcher()
 
     this._handler = {
       get: (ctx: Context, prop: string) => {
-        if (ctx[prop] == null) {
-          let fn = this._factories.get(prop)
-
-          if (fn) ctx[prop] = fn(ctx)
-        }
-
-        return ctx[prop]
+        return ctx[prop] || (ctx[prop] = this._container.get(prop, ctx))
       }
     }
   }
@@ -103,7 +110,7 @@ export class Application {
     }
 
     debug(`register a new binding: ${name}`)
-    this._factories.set(name, fn)
+    this._container.set(name, fn)
     return this
   }
 
@@ -116,7 +123,7 @@ export class Application {
    */
   public set (name: string, value: any) {
     debug(`register a shared binding: ${name}`)
-    this._factories.set(name, () => value)
+    this._container.set(name, () => value)
     return this
   }
 
@@ -127,19 +134,17 @@ export class Application {
    * @public
    */
   public get (name: string): any {
-    let fn = this._factories.get(name)
-
-    if (fn) return fn(this._createContext(null))
+    return this._container.get(name, this._createContext(null))
   }
 
   /**
-   * Check if the binding name is already defined
+   * Check if the binding name is already registered
    *
    * @param name The binding name
    * @public
    */
   public has (name: string): boolean {
-    return this._factories.has(name)
+    return this._container.has(name)
   }
 
   /**
