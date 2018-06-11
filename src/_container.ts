@@ -1,5 +1,5 @@
 
-export class Container<T> {
+export class Container<T extends object> {
   /**
    * The factories map
    * 

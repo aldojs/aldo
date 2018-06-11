@@ -1,7 +1,7 @@
 
 import * as assert from 'assert'
 import { describe, it } from 'mocha'
-import { createApplication, createRequest } from './_support'
+import { createApplication, createRequest } from '../_support'
 
 describe('application.handle(request)', () =>  {
   it('should work - common functions', () => {

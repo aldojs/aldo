@@ -2,7 +2,7 @@
 import * as sinon from 'sinon'
 import * as assert from 'assert'
 import { describe, it } from 'mocha'
-import { createApplication, NOOP, createDispatcher } from './_support'
+import { createApplication, NOOP, createDispatcher } from '../_support'
 
 describe('application.use(fn)', () => {
   it('should accept only functions', () => {
@@ -24,7 +24,7 @@ describe('application.use(fn)', () => {
 
   it("should call the dispatcher's `use` method", () => {
     let dispatcher = createDispatcher()
-    let app = createApplication(dispatcher)
+    let app = createApplication({ dispatcher })
     let stub = sinon.stub(dispatcher, 'use')
 
     app.use(NOOP)
