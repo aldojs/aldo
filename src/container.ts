@@ -49,7 +49,7 @@ export class Container implements IContainer {
    * @param fn The service factory
    * @public
    */
-  public bind (name: string, fn: Factory) {
+  public bind (name: string, fn: Factory): this {
     this._factories.set(name, fn)
     return this
   }
@@ -58,13 +58,13 @@ export class Container implements IContainer {
    * Invoke the factory and return its value
    * 
    * @param name 
-   * @param c 
+   * @param ctx 
    * @public
    */
-  public make (name: string, c: Context): any {
+  public make (name: string, ctx: Context): any {
     let fn = this._factories.get(name)
 
-    if (fn) return fn(c)
+    if (fn) return fn(ctx)
   }
 
   /**
@@ -73,7 +73,7 @@ export class Container implements IContainer {
    * @param name 
    * @public
    */
-  public bound (name: string) {
+  public bound (name: string): boolean {
     return this._factories.has(name)
   }
 

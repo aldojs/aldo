@@ -29,7 +29,7 @@ export class Application {
    * 
    * @private
    */
-  private _inputField: string
+  private _field: string
 
   /**
    * Initialize a new application instance
@@ -43,9 +43,9 @@ export class Application {
     container = new Container(),
     inputField = 'input'
   }: Options = {}) {
+    this._field = inputField
     this._container = container
     this._dispatcher = dispatcher
-    this._inputField = inputField
   }
 
   /**
@@ -59,7 +59,6 @@ export class Application {
       throw new TypeError(`Expect a function but got: ${is(fn)}`)
     }
 
-    // debug(`use middleware: ${fn.name || '<anonymous>'}`)
     this._dispatcher.use(fn)
     return this
   }
@@ -71,8 +70,7 @@ export class Application {
    * @public
    */
   public handle (input: any): any {
-    // debug(`dispatching: ${input.method} ${input.url}`)
-    return this._dispatcher.dispatch(this._createContext(input))
+    return this._dispatch(this._createContext(input))
   }
 
   /**
@@ -87,7 +85,6 @@ export class Application {
       throw new TypeError(`Expect a function but got: ${is(fn)}`)
     }
 
-    // debug(`register a new binding: ${name}`)
     this._container.bind(name, fn)
     return this
   }
@@ -100,7 +97,6 @@ export class Application {
    * @public
    */
   public set (name: string, value: any) {
-    // debug(`register a shared binding: ${name}`)
     this._container.bind(name, () => value)
     return this
   }
@@ -132,6 +128,16 @@ export class Application {
    * @private
    */
   private _createContext (input: any): Context {
-    return this._container.proxify(input, this._inputField)
+    return this._container.proxify(input, this._field)
+  }
+
+  /**
+   * Dispatch a context to middlewares
+   * 
+   * @param context
+   * @private
+   */
+  private _dispatch (context: Context): any {
+    return this._dispatcher.dispatch(context)
   }
 }
