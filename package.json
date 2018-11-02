@@ -1,7 +1,7 @@
 {
-  "name": "aldo-application",
-  "version": "1.0.0-alpha.0",
-  "description": "Aldo's core application",
+  "name": "@aldojs/application",
+  "version": "1.0.0",
+  "description": "Core application",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {
@@ -21,7 +21,6 @@
     "url": "git+https://github.com/aldojs/application.git"
   },
   "keywords": [
-    "aldo",
     "context",
     "service",
     "container",
@@ -36,15 +35,16 @@
   },
   "homepage": "https://github.com/aldojs/application#readme",
   "devDependencies": {
-    "@types/mocha": "^5.2.0",
-    "@types/node": "^8.10.14",
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^8.10.37",
     "@types/sinon": "^4.3.3",
-    "mocha": "^5.1.1",
-    "sinon": "^5.0.7",
+    "mocha": "^5.2.0",
+    "sinon": "^5.1.1",
     "ts-node": "^6.0.3",
-    "typescript": "^2.8.3"
+    "typescript": "^3.1.5"
   },
   "dependencies": {
-    "@sindresorhus/is": "^0.9.0"
+    "@aldojs/container": "^1.1.0",
+    "@aldojs/middleware": "^1.0.1"
   }
 }
