@@ -1,6 +1,6 @@
 
-import { Application } from './application'
 import { createContainer } from '@aldojs/container'
+import { Application, Context } from './application'
 import { createDispatcher } from '@aldojs/middleware'
 
 /**
@@ -10,7 +10,7 @@ import { createDispatcher } from '@aldojs/middleware'
  * @param container 
  * @public
  */
-export function createApplication<T extends object> (
+export function createApplication<T extends Context> (
   dispatcher = createDispatcher<T>(),
   container = createContainer()
 ): Application<T> {

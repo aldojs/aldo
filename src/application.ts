@@ -1,21 +1,24 @@
 
-export type Middleware<T> = (input: T, next: () => any) => any
+export type Middleware<T> = (context: T, next: () => any) => any
 
 export type Factory = (c: Container, ...args: any[]) => any
 
 export interface Dispatcher<T> {
   use (fn: Middleware<T>): any
-  dispatch (input: T): any
+  dispatch (context: T): any
 }
 
 export interface Container {
   bound(name: string): boolean
-  bind(name: string, fn: Factory): this
+  bind(name: string, fn: Factory): any
   make(name: string, ...args: any[]): any
-  singleton(name: string, fn: Factory): this
 }
 
-export class Application<T extends object> {
+export interface Context {
+  [key: string]: any
+}
+
+export class Application<T extends Context> {
   /**
    * The service container
    * 
@@ -49,7 +52,7 @@ export class Application<T extends object> {
     this._dispatcher = dispatcher
 
     this._handler = {
-      get: (ctx: any, prop: string) => {
+      get: (ctx, prop: string) => {
         return ctx[prop] || (ctx[prop] = container.make(prop, ctx))
       }
     }
@@ -68,13 +71,13 @@ export class Application<T extends object> {
   }
 
   /**
-   * Handle the input and return the result
+   * Handle the context and return the result
    * 
-   * @param input 
+   * @param context 
    * @public
    */
-  public handle (input: T): any {
-    return this._dispatch(this._proxify(input))
+  public handle (context: T): any {
+    return this._dispatch(this._proxify(context))
   }
 
   /**
@@ -87,19 +90,6 @@ export class Application<T extends object> {
    */
   public bind (name: string, fn: Factory) {
     this._container.bind(name, fn)
-    return this
-  }
-
-  /**
-   * Register a singleton binding in the container
-   *
-   * @param name The binding name
-   * @param fn The factory function
-   * @throws `TypeError` if the factory is not a function.
-   * @public
-   */
-  public singleton (name: string, fn: Factory) {
-    this._container.singleton(name, fn)
     return this
   }
 
@@ -148,20 +138,20 @@ export class Application<T extends object> {
   /**
    * Create a context proxy.
    * 
-   * @param input 
+   * @param context 
    * @private
    */
-  private _proxify (input: T): T {
-    return new Proxy(input, this._handler)
+  private _proxify (context: T): T {
+    return new Proxy(context, this._handler)
   }
 
   /**
-   * Dispatch the input to the middlewares.
+   * Dispatch the context to the middlewares.
    * 
-   * @param input
+   * @param context
    * @private
    */
-  private _dispatch (input: T): any {
-    return this._dispatcher.dispatch(input)
+  private _dispatch (context: T): any {
+    return this._dispatcher.dispatch(context)
   }
 }
