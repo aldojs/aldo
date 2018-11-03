@@ -1,29 +1,28 @@
 
-`Aldo`'s core application is an object containing a stack of [middleware](#middlewares) functions which are  executed upon each HTTP request.
+An application which uses internally a service container and a middleware dispatcher to handle any context object.
 
 ```js
-const { Application } = require('aldo-application')
+import { createApplication } from '@aldojs/application'
 
-const app = new Application()
+let app = createApplication()
 
-// add a request handler
-app.use(() => 'Hello world!')
+// add a sum handler
+app.use(({ a, b }) => a + b)
 
-// handle the incoming request
-await app.handle({ url: '/', method: 'GET' })
+// handle the context
+let result = app.handle({ a: 1, b: -1 })
 ```
 
 ## Middlewares
 
-Middlewares could be a common or an async function.
-Each function receives a [request context](#context) and a `next` function to call the downstream middlewares, and must return a [resposne](#response) as output.
+Middlewares could be a common or an async function. please refer to [@aldojs/middleware](https://www.npmjs.org/package/@aldojs/middleware) for more information on how middlewares are dispatched.
 
 ```ts
 // Handler function signature
 declare type Middleware = (ctx: Context, next: () => any) => any;
 ```
 
-You can register as many middlewares as needed with the application's method `.use(fn)`
+You can register as many middlewares as needed with the application's method `.use(fn)`.
 
 ```js
 // to add a handler directly in the stack
@@ -34,64 +33,51 @@ Whether a middleware runs before or after a downstream middlewares depends on th
 For example, the following middleware would perform some task before the others
 
 ```js
-app.use((ctx, next) => {
+app.use((context, next) => {
   // Perform task
 
   return next()
 })
 ```
 
-However, this middleware would perform its task after the request is handled by the following middlewares
+However, this one would perform its task after the context is handled by the following middlewares.
 
 ```js
-app.use(async (ctx, next) => {
-  let response = await next()
+app.use(async (context, next) => {
+  let result = await next()
 
   // Perform task
 
-  return response
+  return result
 })
 ```
 
 ## Context
 
-The context object is a simple plain object with these properties:
-- `request` refers to the incoming request object
-- Other fields defined with `.set(key, value)` or `.bind(key, factory)`
+The context is a proxy object of the original object given to `.handle()` method.
+It provides the same fields, in addition to the properties defined with `.set(key, value)` or `.bind(key, factory)` methods.
 
 ```ts
 declare interface Context {
-  request: Request;
-  response: ResponseFactory;
   [key: string]: any;
 }
 ```
 
-To extend the request context, and add shared values (or services), like a DB connection or a global logger, you may use `.set(key, value)`
+You may use `.set(key, instance)` to share instances between contexts, like a DB connection or a global logger.
 
 ```js
-const mongoose = require('mongoose')
+import Mongoose from 'mongoose'
 
-await mongoose.connect('mongodb://localhost/test')
+// configure the mongo db connection
 
-app.set('db', mongoose)
+app.set('db', connection)
 ```
 
-To set per request lazy properties, you may use `.bind(key, fn)`.
-This method takes a field name, and a function to be used as a `factory` of the field value.
+You may also use `.bind(key, fn)` to bind per-context instances.
+This method takes the field name, and the `factory` function to create the service object.
 
 ```js
 app.bind('session', () => new Session(options))
 ```
 
-This method is very useful, since it allows you to lazily (only when needed) attach a per request property into the context without adding a dedicated handler.
-
-`.has(key)` and `.get(key)` are aldo available to check the existence of a certain field or to get a previously defined field value.
-
-## Response
-
-The middleware output could be:
-- `strings` or `buffers` are sent directly,
-- `streams` which will be piped to the outgoing response,
-- `null` or `undefind` as empty responses (By default with 204 status code),
-- otherwise, any other value will be serialized as `JSON`, with the proper `Content-Type` and `Content-Length` headers.
+`.has(key)` and `.get(key)` are aldo available to check the existence of a certain service or to get a previously defined one.
