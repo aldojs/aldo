@@ -1,5 +1,5 @@
 
-An application which uses internally a service container and a middleware dispatcher to handle any context object.
+A generic application which uses internally a service container and a middleware dispatcher to handle any context object.
 
 ```js
 import { createApplication } from '@aldojs/application'

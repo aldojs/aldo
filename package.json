@@ -1,7 +1,7 @@
 {
   "name": "@aldojs/application",
   "version": "1.0.0",
-  "description": "Core application",
+  "description": "Generic application for Node.js projects",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {
