@@ -1,13 +1,11 @@
 {
   "name": "@aldojs/application",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Generic application for Node.js projects",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build && npm test",
-    "test": "mocha -r ts-node/register \"test/**/*.ts\""
+    "test": "mocha test"
   },
   "files": [
     "lib"
@@ -35,16 +33,10 @@
   },
   "homepage": "https://github.com/aldojs/application#readme",
   "devDependencies": {
-    "@types/mocha": "^5.2.5",
-    "@types/node": "^8.10.37",
-    "@types/sinon": "^4.3.3",
-    "mocha": "^5.2.0",
-    "sinon": "^5.1.1",
-    "ts-node": "^6.0.3",
-    "typescript": "^3.1.5"
+    "mocha": "^5.2.0"
   },
   "dependencies": {
-    "@aldojs/container": "^1.1.0",
-    "@aldojs/middleware": "^1.0.1"
+    "@aldojs/container": "^1.2.0",
+    "@aldojs/middleware": "^1.1.1"
   }
 }
