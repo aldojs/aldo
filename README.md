@@ -29,33 +29,10 @@ You can register as many middlewares as needed with the application's method `.u
 app.use(middleware)
 ```
 
-Whether a middleware runs before or after a downstream middlewares depends on the middleware itself.
-For example, the following middleware would perform some task before the others
-
-```js
-app.use((context, next) => {
-  // Perform task
-
-  return next()
-})
-```
-
-However, this one would perform its task after the context is handled by the following middlewares.
-
-```js
-app.use(async (context, next) => {
-  let result = await next()
-
-  // Perform task
-
-  return result
-})
-```
-
 ## Context
 
-The context is a proxy object of the original object given to `.handle()` method.
-It provides the same fields, in addition to the properties defined with `.set(key, value)` or `.bind(key, factory)` methods.
+The context is a plain object, containing all data needed by the middlewares to do their job.
+A proxied version is passed to the middleware chain, instead of the original context object, to provide the same fields, in addition to the properties defined with `.set(key, value)` or `.bind(key, factory)` methods. In other, you can access the services registered within the application, directly in the middlewares
 
 ```ts
 declare interface Context {
@@ -63,20 +40,25 @@ declare interface Context {
 }
 ```
 
-You may use `.set(key, instance)` to share instances between contexts, like a DB connection or a global logger.
+You may use `Application::set(key, instance)` to share instances between contexts, like a DB connection or a global logger.
 
 ```js
 import Mongoose from 'mongoose'
 
-// configure the mongo db connection
+// set up the mongon db connection
+// let connection = ...
 
+// register it within the context
 app.set('db', connection)
 ```
 
 You may also use `.bind(key, fn)` to bind per-context instances.
-This method takes the field name, and the `factory` function to create the service object.
+This method takes the field name, and the `factory` function to create the service object on demand.
 
 ```js
+let options = {/* some session options */}
+
+// a new instance of Session is `lazily` created for each context
 app.bind('session', () => new Session(options))
 ```
 
