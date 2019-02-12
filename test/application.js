@@ -1,8 +1,8 @@
 
-import 'mocha'
-import * as sinon from 'sinon'
-import * as assert from 'assert'
-import { createApplication } from '../src'
+'use strict'
+
+const assert = require('assert')
+const { createApplication } = require('../lib')
 
 const NOOP = () => {}
 
@@ -10,10 +10,10 @@ describe('application.use(fn)', () => {
   it('should accept only functions', () => {
     let app = createApplication()
 
-    assert.throws(() => app.use(234 as any))
-    assert.throws(() => app.use(null as any))
-    assert.throws(() => app.use('foo' as any))
-    assert.throws(() => app.use(undefined as any))
+    assert.throws(() => app.use(234))
+    assert.throws(() => app.use(null))
+    assert.throws(() => app.use('foo'))
+    assert.throws(() => app.use(undefined))
 
     assert.doesNotThrow(() => app.use(NOOP))
   })
@@ -25,7 +25,7 @@ describe('application.use(fn)', () => {
   })
 })
 
-describe('application.handle(request)', () =>  {
+describe('application.handle(context)', () =>  {
   it('should work - common functions', () => {
     let app = createApplication()
 
