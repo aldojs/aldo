@@ -1,27 +1,19 @@
 
-import { Container, Factory } from '@aldojs/container'
-import { Dispatcher, Middleware } from '@aldojs/middleware'
+import { Middleware, Handler, Dispatcher } from './middleware'
 
-/**
- * Initialize a new application
- * 
- * @param dispatcher 
- * @param container 
- */
-export declare function createApplication (
-  dispatcher?: Dispatcher, container?: Container
-): Application;
+export declare type Container = Map<string | symbol, any>;
 
-/**
- * 
- */
-export declare class Application {
+export declare interface Router {
+  dispatch(context: object): any;
+}
+
+export declare class Application extends Dispatcher {
   /**
    * 
-   * @param dispatcher 
-   * @param container 
+   * @param fns 
+   * @param map 
    */
-  constructor(dispatcher: Dispatcher, container: Container);
+  constructor(fns: Middleware[], map: Container);
 
   /**
    * Use a middleware.
@@ -31,24 +23,6 @@ export declare class Application {
    * @public
    */
   use(fn: Middleware): this;
-
-  /**
-   * Handle the context and return the result
-   *
-   * @param context
-   * @public
-   */
-  handle(context: object): any;
-
-  /**
-   * Register a binding in the container
-   *
-   * @param name The binding name.
-   * @param fn The factory function.
-   * @throws if the factory is not a function.
-   * @public
-   */
-  bind(name: string, fn: Factory): this;
 
   /**
    * Register a raw binding
@@ -75,3 +49,11 @@ export declare class Application {
    */
   has(name: string): boolean;
 }
+
+/**
+ * Initialize a new application
+ * 
+ * @param fns  
+ * @param map 
+ */
+export declare function createApplication (fns: Function[], map?: Container): Application;
