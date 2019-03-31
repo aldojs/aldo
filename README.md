@@ -1,16 +1,23 @@
 
-A generic application which uses internally a service container and a middleware dispatcher to handle any context object.
+A generic application to dispatch a context object over a chained list of middlewares.
 
 ```js
 import { createApplication } from '@aldojs/application'
 
 let app = createApplication()
 
-// add a sum handler
-app.use(({ a, b }) => a + b)
+// use a middleware
+app.use((handle) => async (ctx) => {
+  let result = await handle(ctx)
 
-// handle the context
-let result = app.handle({ a: 1, b: -1 })
+  return result * 2
+})
+
+// add a sum handler
+app.setHandler(({ a, b }) => a + b)
+
+// dispatch the context to handlers
+let result = app.dispatch({ a: 1, b: -2 })
 ```
 
 ## Middlewares
@@ -18,8 +25,9 @@ let result = app.handle({ a: 1, b: -1 })
 Middlewares could be a common or an async function. please refer to [@aldojs/middleware](https://www.npmjs.org/package/@aldojs/middleware) for more information on how middlewares are dispatched.
 
 ```ts
-// Handler function signature
-declare type Middleware = (ctx: Context, next: () => any) => any;
+declare type Handler = (ctx: Context) => any;
+
+declare type Middleware = (next: Handler) => Handler;
 ```
 
 You can register as many middlewares as needed with the application's method `.use(fn)`.
@@ -29,10 +37,16 @@ You can register as many middlewares as needed with the application's method `.u
 app.use(middleware)
 ```
 
+At the end, you have to register the last and default handler of the context.
+
+```js
+app.setHandler(fn);
+```
+
 ## Context
 
-The context is a plain object, containing all data needed by the middlewares to do their job.
-A proxied version is passed to the middleware chain, instead of the original context object, to provide the same fields, in addition to the properties defined with `.set(key, value)` or `.bind(key, factory)` methods. In other, you can access the services registered within the application, directly in the middlewares
+The context is a plain object, containing all data needed by the handlers to do their job.
+A proxied version is passed to the middleware chain, instead of the original context object, to provide the same fields, in addition to the properties defined with `Application::set(key, value)`. In other words, you can access the services registered within the application, directly in the middlewares within the context object.
 
 ```ts
 declare interface Context {
@@ -49,17 +63,14 @@ import Mongoose from 'mongoose'
 // let connection = ...
 
 // register it within the context
-app.set('db', connection)
-```
+app.set('db', connection);
 
-You may also use `.bind(key, fn)` to bind per-context instances.
-This method takes the field name, and the `factory` function to create the service object on demand.
+// you can access to the DB connection within the context
+app.setHandler(async ({ db }) => {
+  let users = await db.fetchUsers()
 
-```js
-let options = {/* some session options */}
-
-// a new instance of Session is `lazily` created for each context
-app.bind('session', () => new Session(options))
+  // ...
+})
 ```
 
 `.has(key)` and `.get(key)` are aldo available to check the existence of a certain service or to get a previously defined one.
