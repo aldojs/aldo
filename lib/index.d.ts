@@ -1,38 +1,16 @@
 
-export declare type Middleware = (fn: Handler) => (context: object) => any;
+import { Middleware, Dispatcher } from '@aldojs/middleware';
 
 export declare type Container = Map<string | symbol, any>;
 
-export declare type Handler = (context: object) => any;
-
-export declare interface Dispatcher {
-  dispatch(context: object): any;
-}
-
-export declare class Application {
+export declare class Application extends Dispatcher {
   /**
+   * Initialize a new application
    * 
-   * @param dispatcher 
+   * @param fns 
    * @param map 
    */
-  constructor(dispatcher: Dispatcher, map: Container);
-
-  /**
-   * Use a middleware.
-   *
-   * @param fn The middleware function.
-   * @throws if the middleware is not a function.
-   * @public
-   */
-  use(fn: Middleware): this;
-
-  /**
-   * Handle the context and return the result
-   *
-   * @param context
-   * @public
-   */
-  handle(context: object): any;
+  constructor(fns: Middleware[], map: Container);
 
   /**
    * Register a raw binding
@@ -63,7 +41,8 @@ export declare class Application {
 /**
  * Initialize a new application
  * 
- * @param dispatcher 
+ * @param fns  
  * @param map 
+ * @throws if `fns` is not a valid array of middlewares.
  */
-export declare function createApplication (dispatcher: Dispatcher, map?: Container): Application;
+export declare function createApplication (fns: Middleware[], map?: Container): Application;
